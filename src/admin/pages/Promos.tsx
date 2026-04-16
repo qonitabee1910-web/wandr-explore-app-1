@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { promoService } from '../services/promoService';
 import { Promo } from '../types/index';
+import { ProtectedAdminPage } from '../context/AdminContext';
 
 const Promos: React.FC = () => {
   const [promos, setPromos] = useState<Promo[]>([]);
@@ -31,9 +32,10 @@ const Promos: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Promo Management</h1>
+    <ProtectedAdminPage>
+      <div style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Promo Management</h1>
         <button
           onClick={() => console.log('Create new promo')}
           style={{
@@ -162,7 +164,8 @@ const Promos: React.FC = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedAdminPage>
   );
 };
 

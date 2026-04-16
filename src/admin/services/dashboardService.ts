@@ -132,6 +132,128 @@ export const dashboardService = {
   },
 
   /**
+   * Get analytics data for custom date range
+   */
+  async getAnalyticsDataByDateRange(startDate: Date, endDate: Date): Promise<ApiResponse<AnalyticsData[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('rides')
+        .select('created_at, fare')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Group data by date
+      const groupedData = new Map<string, { rides: number; revenue: number }>();
+
+      (data || []).forEach((ride) => {
+        const date = new Date(ride.created_at).toISOString().split('T')[0];
+        const current = groupedData.get(date) || { rides: 0, revenue: 0 };
+        groupedData.set(date, {
+          rides: current.rides + 1,
+          revenue: current.revenue + (ride.fare || 0),
+        });
+      });
+
+      const analytics: AnalyticsData[] = Array.from(groupedData.entries())
+        .map(([date, stats]) => ({
+          date,
+          rides: stats.rides,
+          revenue: parseFloat(stats.revenue.toFixed(2)),
+          users: 0,
+          shuttles: 0,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      return {
+        success: true,
+        data: analytics,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: handleSupabaseError(error),
+      };
+    }
+  },
+
+  /**
+   * Get statistics for a custom date range
+   */
+  async getStatsByDateRange(startDate: Date, endDate: Date): Promise<ApiResponse<DashboardStats>> {
+    try {
+      const startISO = startDate.toISOString();
+      const endISO = endDate.toISOString();
+
+      // Fetch rides in range
+      const { data: rides, count: totalRides } = await supabase
+        .from('rides')
+        .select('*', { count: 'exact' })
+        .gte('created_at', startISO)
+        .lte('created_at', endISO);
+
+      // Fetch completed rides in range
+      const { count: completedRides } = await supabase
+        .from('rides')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .gte('created_at', startISO)
+        .lte('created_at', endISO);
+
+      // Fetch canceled rides in range
+      const { count: canceledRides } = await supabase
+        .from('rides')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'canceled')
+        .gte('created_at', startISO)
+        .lte('created_at', endISO);
+
+      // Calculate revenue in range
+      const totalRevenue = (rides || []).reduce((sum, ride) => sum + (ride.fare || 0), 0);
+
+      // Unique users in range
+      const uniqueUsers = new Set((rides || []).map((r) => r.user_id)).size;
+
+      // Get current totals (not just range)
+      const { count: totalDrivers } = await supabase
+        .from('drivers')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: totalShuttles } = await supabase
+        .from('shuttles')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: pendingApprovals } = await supabase
+        .from('drivers')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      const stats: DashboardStats = {
+        totalRides: totalRides || 0,
+        totalShuttles: totalShuttles || 0,
+        totalDrivers: totalDrivers || 0,
+        activeUsers: uniqueUsers,
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        completedRides: completedRides || 0,
+        pendingApprovals: pendingApprovals || 0,
+        canceledRides: canceledRides || 0,
+      };
+
+      return {
+        success: true,
+        data: stats,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: handleSupabaseError(error),
+      };
+    }
+  },
+
+  /**
    * Get ride metrics
    */
   async getRideMetrics(): Promise<ApiResponse<any>> {

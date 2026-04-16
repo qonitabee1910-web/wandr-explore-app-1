@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { driverService } from '../services/driverService';
 import { Driver, DriverFilter } from '../types/index';
+import { ProtectedAdminPage } from '../context/AdminContext';
 
 const Drivers: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -31,10 +32,13 @@ const Drivers: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>
-        Driver Management
-      </h1>
+    <ProtectedAdminPage>
+      <div style={{ padding: '24px' }}>
+        <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>
+          Driver Management
+          <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>
+          Driver Management
+        </h1>
 
       {error && (
         <div
@@ -128,7 +132,8 @@ const Drivers: React.FC = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedAdminPage>
   );
 };
 

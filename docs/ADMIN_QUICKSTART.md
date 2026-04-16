@@ -1,52 +1,238 @@
-# Admin Dashboard - Quick Start Guide
+# 🚀 Admin Dashboard Quick Start & Reference
 
-**Total Setup Time:** 30 minutes  
-**Status:** ✅ Ready to deploy  
-**Last Updated:** April 16, 2026
+## Quick Start (5 minutes)
+
+### Step 1: Add Admin Auth Check to a Page
+
+```typescript
+import { useAdminAuth } from '../hooks';
+
+export const MyAdminPage: React.FC = () => {
+  const { isAdmin, isLoading } = useAdminAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAdmin) return <div>Unauthorized - Admin access required</div>;
+
+  return <div>Your admin content here</div>;
+};
+```
+
+### Step 2: Use Admin Table Data Hook
+
+```typescript
+import { useAdminTableData } from '../hooks';
+import { driverService } from '../services';
+
+export const DriversPage: React.FC = () => {
+  const { 
+    data, 
+    loading, 
+    error, 
+    page, 
+    search, 
+    sort,
+    refetch 
+  } = useAdminTableData(
+    (filters) => driverService.getDrivers(filters),
+    { defaultLimit: 20 }
+  );
+
+  return (
+    <div>
+      <input 
+        placeholder="Search..." 
+        onChange={(e) => search(e.target.value)}
+      />
+      
+      {loading && <p>Loading drivers...</p>}
+      {error && <p>Error: {error}</p>}
+
+      <table>
+        <tbody>
+          {data.map(driver => (
+            <tr key={driver.id}>
+              <td>{driver.name}</td>
+              <td>{driver.email}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <button onClick={() => refetch()}>Refresh</button>
+    </div>
+  );
+};
+```
+
+### Step 3: Use Admin Form Hook
+
+```typescript
+import { useAdminForm } from '../hooks';
+
+interface PromoForm {
+  code: string;
+  discount: number;
+  validTo: string;
+}
+
+export const CreatePromoModal: React.FC = () => {
+  const { values, errors, getFieldProps, handleSubmit } = useAdminForm<PromoForm>({
+    initialValues: { code: '', discount: 20, validTo: '' },
+    onSubmit: async (values) => {
+      await promoService.createPromo(values);
+    },
+    validate: (values) => {
+      const errors = [];
+      if (!values.code) errors.push({ field: 'code', message: 'Code required' });
+      if (values.discount <= 0) errors.push({ field: 'discount', message: 'Invalid discount' });
+      return errors;
+    },
+  });
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input {...getFieldProps('code')} />
+      {errors.code && <span>{errors.code}</span>}
+      
+      <button type="submit">Create Promo</button>
+    </form>
+  );
+};
+```
 
 ---
 
-## 📋 Quick Overview
+## 📚 Available Hooks
 
-**What:** PYU-GO Admin Web Dashboard  
-**Purpose:** Manage drivers, rides, shuttles, pricing, promos, and ads  
-**Tech:** React + TypeScript + Supabase  
-**Users:** Super Admin, Admin, Moderator, Analyst  
+### 1. useAdminAuth()
+Check admin authentication and permissions
+
+```typescript
+const { isAdmin, isLoading, user, canAccess } = useAdminAuth();
+
+if (canAccess('drivers:approve')) {
+  // Show approval button
+}
+```
+
+### 2. useAdminTableData<T>(fetchFn, options)
+Manage paginated table data with filters
+
+```typescript
+const { data, loading, search, sort, page, nextPage } = useAdminTableData(
+  (filters) => driverService.getDrivers(filters)
+);
+```
+
+### 3. useAdminForm<T>(options)
+Manage form state and validation
+
+```typescript
+const { values, errors, handleSubmit, getFieldProps } = useAdminForm({
+  initialValues: { code: '', discount: 0 },
+  onSubmit: async (values) => { /* ... */ }
+});
+```
 
 ---
 
-## ⚡ 5-Minute Setup
+## 🎯 Common Patterns
 
-### 1. Environment Setup (2 minutes)
-
-```bash
-# Create .env.local file
-cat > .env.local << EOF
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key
-VITE_API_BASE_URL=http://localhost:5173/api
-EOF
+### Table with Search & Pagination
+```typescript
+const { data, search, page, nextPage, prevPage, totalPages } = useAdminTableData(...);
+// Add search input, table, pagination buttons
 ```
 
-Get credentials from [Supabase Dashboard](https://supabase.com/dashboard)
-
-### 2. Database Setup (10 minutes)
-
-**In Supabase Dashboard:**
-
-1. Go to SQL Editor
-2. Create new query
-3. Copy content from: `src/admin/migrations/001_initial_schema.sql`
-4. Execute
-5. Repeat for: `src/admin/migrations/002_add_rls_policies.sql`
-
-### 3. Start Dev Server (1 minute)
-
-```bash
-npm run dev
+### Form with Validation
+```typescript
+const { values, errors, handleSubmit, getFieldProps, hasFieldError } = useAdminForm(...);
+// Add form inputs with error messages
 ```
 
-Access: `http://localhost:5173/admin/dashboard`
+### Delete with Confirmation
+```typescript
+const [deleteId, setDeleteId] = useState<string | null>(null);
+// Show delete button, then confirmation, then call delete
+```
+
+### Real-time Subscription
+```typescript
+const { refetch } = useAdminTableData(...);
+useEffect(() => {
+  const channel = supabase.channel('drivers').on('*', () => refetch()).subscribe();
+  return () => channel.unsubscribe();
+}, [refetch]);
+```
+
+---
+
+## 📖 Admin Services
+
+All services follow consistent pattern: `await service.method(params)`
+
+**Dashboard Service**
+- `getStats()` - Platform statistics
+- `getAnalyticsData(days)` - Daily metrics
+
+**Driver Service**
+- `getDrivers(filters)` - List drivers with filtering
+- `getDriver(id)` - Get single driver
+- `approveDriver(request)` - Approve driver
+- `suspendDriver(id, reason)` - Suspend driver
+
+**Ride Service**
+- `getRides(filters)` - List rides
+- `getRide(id)` - Get ride details
+- `getRideTracking(id)` - Live tracking
+- `cancelRide(id, reason)` - Cancel ride
+
+**Shuttle Service**
+- `getShuttles()` - List shuttles
+- `createShuttle(data)` - Create shuttle
+- `updateShuttle(id, data)` - Update shuttle
+
+**Promo Service**
+- `getPromos()` - List promos
+- `createPromo(data)` - Create promo
+- `updatePromo(id, data)` - Update promo
+
+**Pricing Service**
+- `getPricingRules()` - List pricing rules
+- `createPricingRule(data)` - Create rule
+- `updatePricingRule(id, data)` - Update rule
+
+**Ads Service**
+- `getAds()` - List ads
+- `createAd(data)` - Create ad
+- `updateAd(id, data)` - Update ad
+
+---
+
+## ⚙️ Setup Checklist
+
+- [ ] All admin pages have `useAdminAuth()` check
+- [ ] All data tables use `useAdminTableData()` hook
+- [ ] All forms use `useAdminForm()` hook
+- [ ] Real-time subscriptions added to key pages
+- [ ] Error handling and loading states present
+- [ ] Permission checks in place
+- [ ] UI/UX enhancements complete
+
+---
+
+## 🔗 Full Documentation
+
+- [Integration Guide](./ADMIN_DASHBOARD_INTEGRATION_GUIDE.md) - Comprehensive docs
+- [Integration Checklist](./ADMIN_INTEGRATION_CHECKLIST.md) - Implementation timeline
+- [Supabase Setup](./SUPABASE_SETUP_GUIDE.md) - Database setup
+- [Database Service](./SUPABASE_INTEGRATION_GUIDE.md#database-service) - Query examples
+
+---
+
+**Last Updated:** April 16, 2026  
+**Status:** ✅ Ready to Use  
+**Custom Hooks:** ✅ Created in `src/admin/hooks/`
 
 ---
 

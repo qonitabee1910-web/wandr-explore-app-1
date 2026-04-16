@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { adsService } from '../services/adsService';
 import { Advertisement } from '../types/index';
+import { ProtectedAdminPage } from '../context/AdminContext';
 
 const Ads: React.FC = () => {
   const [ads, setAds] = useState<Advertisement[]>([]);
@@ -31,9 +32,10 @@ const Ads: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Ads Management</h1>
+    <ProtectedAdminPage>
+      <div style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Ads Management</h1>
         <button
           onClick={() => console.log('Create new ad')}
           style={{
@@ -150,7 +152,8 @@ const Ads: React.FC = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedAdminPage>
   );
 };
 

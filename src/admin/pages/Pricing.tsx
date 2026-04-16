@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { pricingService } from '../services/pricingService';
 import { PricingRule } from '../types/index';
+import { ProtectedAdminPage } from '../context/AdminContext';
 
 const Pricing: React.FC = () => {
   const [pricingRules, setPricingRules] = useState<PricingRule[]>([]);
@@ -31,9 +32,10 @@ const Pricing: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Pricing Control</h1>
+    <ProtectedAdminPage>
+      <div style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Pricing Control</h1>
         <button
           onClick={() => console.log('Create new pricing rule')}
           style={{
@@ -148,7 +150,8 @@ const Pricing: React.FC = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedAdminPage>
   );
 };
 

@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { rideService } from '../services/rideService';
 import { Ride } from '../types/index';
+import { ProtectedAdminPage } from '../context/AdminContext';
 
 const Rides: React.FC = () => {
   const [rides, setRides] = useState<Ride[]>([]);
@@ -31,10 +32,13 @@ const Rides: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>
-        Ride Monitoring
-      </h1>
+    <ProtectedAdminPage>
+      <div style={{ padding: '24px' }}>
+        <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>
+          Ride Monitoring
+          <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>
+          Ride Monitoring
+        </h1>
 
       {error && (
         <div
@@ -131,7 +135,8 @@ const Rides: React.FC = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedAdminPage>
   );
 };
 

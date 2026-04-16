@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { shuttleService } from '../services/shuttleService';
 import { Shuttle } from '../types/index';
+import { ProtectedAdminPage } from '../context/AdminContext';
 
 const Shuttles: React.FC = () => {
   const [shuttles, setShuttles] = useState<Shuttle[]>([]);
@@ -133,7 +134,8 @@ const Shuttles: React.FC = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedAdminPage>
   );
 };
 

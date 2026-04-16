@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { settingsService } from '../services/settingsService';
 import { AppSettings } from '../types/index';
+import { ProtectedAdminPage } from '../context/AdminContext';
 
 const Settings: React.FC = () => {
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
@@ -31,8 +32,10 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>Settings</h1>
+    <ProtectedAdminPage>
+      <div style={{ padding: '24px' }}>
+        <div style={{ padding: '24px' }}>
+        <h1 style={{ marginBottom: '24px', fontSize: '28px', fontWeight: '600' }}>Settings</h1>
 
       {error && (
         <div
@@ -263,7 +266,8 @@ const Settings: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedAdminPage>
   );
 };
 

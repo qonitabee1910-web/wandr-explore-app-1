@@ -6,6 +6,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout';
+import { AdminProvider } from './context/AdminContext';
 
 // Lazy load pages for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -49,12 +50,14 @@ const PageLoader = () => (
 /**
  * Admin Router Component
  * All admin routes under /admin prefix
+ * Wrapped with AdminProvider for authentication context
  */
 export const AdminRouter: React.FC = () => {
   return (
-    <Routes>
-      {/* Main layout with sidebar and topbar */}
-      <Route element={<AdminLayout />}>
+    <AdminProvider>
+      <Routes>
+        {/* Main layout with sidebar and topbar */}
+        <Route element={<AdminLayout />}>
         {/* Dashboard */}
         <Route
           path="dashboard"
@@ -142,6 +145,7 @@ export const AdminRouter: React.FC = () => {
       {/* Catch-all for invalid admin routes */}
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
+    </AdminProvider>
   );
 };
 
