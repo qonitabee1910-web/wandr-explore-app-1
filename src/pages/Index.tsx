@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Plane, Star, ArrowRight, Tag } from "lucide-react";
-import { motion } from "framer-motion";
+import { Building2, Bus, Car, Star, ArrowRight, Tag, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Layout from "@/components/Layout";
 import { hotels, promos, formatCurrency } from "@/data/dummyData";
 import { Button } from "@/components/ui/button";
@@ -9,60 +10,131 @@ import { Card, CardContent } from "@/components/ui/card";
 const heroBanners = [
   {
     title: "Liburan Hemat ke Bali",
-    subtitle: "Diskon hingga 50% untuk hotel & pesawat",
+    subtitle: "Diskon hingga 50% untuk hotel & shuttle",
     bg: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&h=500&fit=crop",
   },
   {
-    title: "Weekend Getaway",
-    subtitle: "Mulai dari Rp 350.000",
+    title: "Weekend Getaway Bandung",
+    subtitle: "Shuttle mulai dari Rp 120.000",
     bg: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&h=500&fit=crop",
+  },
+  {
+    title: "Ride & Explore",
+    subtitle: "Perjalanan aman dengan Ride",
+    bg: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1200&h=500&fit=crop",
   },
 ];
 
 const Index = () => {
+  const [currentBanner, setCurrentBanner] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % heroBanners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextBanner = () => {
+    setCurrentBanner((prev) => (prev + 1) % heroBanners.length);
+  };
+
+  const prevBanner = () => {
+    setCurrentBanner((prev) => (prev - 1 + heroBanners.length) % heroBanners.length);
+  };
+
   return (
     <Layout>
       {/* Hero */}
       <section className="relative h-[320px] md:h-[420px] overflow-hidden">
-        <img
-          src={heroBanners[0].bg}
-          alt="Hero"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-foreground/70 to-foreground/20" />
-        <div className="relative container mx-auto px-4 h-full flex flex-col justify-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl md:text-5xl font-bold text-white mb-2"
-          >
-            {heroBanners[0].title}
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-lg md:text-xl text-white/90 mb-6"
-          >
-            {heroBanners[0].subtitle}
-          </motion.p>
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex gap-3"
+            key={currentBanner}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0"
           >
-            <Button asChild size="lg" className="rounded-full font-semibold">
-              <Link to="/hotels">
-                <Building2 className="w-4 h-4 mr-1" /> Cari Hotel
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="secondary" className="rounded-full font-semibold">
-              <Link to="/flights">
-                <Plane className="w-4 h-4 mr-1" /> Cari Pesawat
-              </Link>
-            </Button>
+            <img
+              src={heroBanners[currentBanner].bg}
+              alt="Hero"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-foreground/70 to-foreground/20" />
+            <div className="relative container mx-auto px-4 h-full flex flex-col justify-center">
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-3xl md:text-5xl font-bold text-white mb-2"
+              >
+                {heroBanners[currentBanner].title}
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-lg md:text-xl text-white/90 mb-6"
+              >
+                {heroBanners[currentBanner].subtitle}
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-wrap gap-3"
+              >
+                <Button asChild size="lg" className="rounded-full font-semibold">
+                  <Link to="/hotels">
+                    <Building2 className="w-4 h-4 mr-1" /> Cari Hotel
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="secondary" className="rounded-full font-semibold">
+                  <Link to="/shuttle">
+                    <Bus className="w-4 h-4 mr-1" /> Cari Shuttle
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="secondary" className="rounded-full font-semibold bg-white/20 hover:bg-white/30 text-white border-none">
+                  <Link to="/ride">
+                    <Car className="w-4 h-4 mr-1" /> Pesan Ride
+                  </Link>
+                </Button>
+              </motion.div>
+            </div>
           </motion.div>
+        </AnimatePresence>
+
+        {/* Carousel Controls */}
+        <div className="absolute bottom-6 right-4 flex gap-2 z-10">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={prevBanner}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={nextBanner}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Carousel Indicators */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+          {heroBanners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentBanner(i)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                i === currentBanner ? "bg-white w-6" : "bg-white/50"
+              }`}
+            />
+          ))}
         </div>
       </section>
 
@@ -70,29 +142,41 @@ const Index = () => {
       <section className="container mx-auto px-4 -mt-8 relative z-10 mb-10">
         <Card className="shadow-lg">
           <CardContent className="p-4 md:p-6">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Link
                 to="/hotels"
-                className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary hover:bg-traveloka-blue-light transition-all group"
+                className="flex flex-col md:flex-row items-center gap-3 p-4 rounded-xl border border-border hover:border-primary hover:bg-traveloka-blue-light transition-all group"
               >
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20">
                   <Building2 className="w-6 h-6 text-primary" />
                 </div>
-                <div>
+                <div className="text-center md:text-left">
                   <p className="font-semibold text-foreground">Hotel</p>
-                  <p className="text-xs text-muted-foreground">Cari & pesan hotel</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Cari & pesan hotel</p>
                 </div>
               </Link>
               <Link
-                to="/flights"
-                className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary hover:bg-traveloka-blue-light transition-all group"
+                to="/shuttle"
+                className="flex flex-col md:flex-row items-center gap-3 p-4 rounded-xl border border-border hover:border-primary hover:bg-traveloka-blue-light transition-all group"
               >
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20">
-                  <Plane className="w-6 h-6 text-primary" />
+                  <Bus className="w-6 h-6 text-primary" />
                 </div>
-                <div>
-                  <p className="font-semibold text-foreground">Pesawat</p>
-                  <p className="text-xs text-muted-foreground">Tiket penerbangan</p>
+                <div className="text-center md:text-left">
+                  <p className="font-semibold text-foreground">Shuttle</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Travel antarkota</p>
+                </div>
+              </Link>
+              <Link
+                to="/ride"
+                className="flex flex-col md:flex-row items-center gap-3 p-4 rounded-xl border border-border hover:border-primary hover:bg-traveloka-blue-light transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20">
+                  <Car className="w-6 h-6 text-primary" />
+                </div>
+                <div className="text-center md:text-left">
+                  <p className="font-semibold text-foreground">Ride</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Ojek & Taksi Online</p>
                 </div>
               </Link>
             </div>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Building2, Plane, Tag, User, Menu, X } from "lucide-react";
+import { Building2, Bus, Car, Tag, User, Menu, X } from "lucide-react";
 import { useState } from "react";
 
 const Navbar = () => {
@@ -8,7 +8,8 @@ const Navbar = () => {
 
   const links = [
     { path: "/hotels", label: "Hotel", icon: Building2 },
-    { path: "/flights", label: "Pesawat", icon: Plane },
+    { path: "/shuttle", label: "Shuttle", icon: Bus },
+    { path: "/ride", label: "Ride", icon: Car },
     { path: "/promos", label: "Promo", icon: Tag },
     { path: "/account", label: "Akun", icon: User },
   ];

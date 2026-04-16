@@ -22,10 +22,10 @@ const Booking = () => {
       <Layout>
         <div className="container mx-auto px-4 py-10 max-w-lg text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-traveloka-green/20 flex items-center justify-center mb-4">
-            <span className="text-4xl">✓</span>
+            <span className="text-4xl text-traveloka-green">✓</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Booking Berhasil!</h1>
-          <p className="text-muted-foreground mb-2">Terima kasih telah melakukan pemesanan.</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Pemesanan Berhasil!</h1>
+          <p className="text-muted-foreground mb-2">Terima kasih telah memilih layanan kami.</p>
           <Card className="text-left mt-6">
             <CardContent className="p-5 space-y-2">
               <div className="flex justify-between">
@@ -33,12 +33,12 @@ const Booking = () => {
                 <span className="text-sm font-medium capitalize">{type}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Nama</span>
+                <span className="text-sm text-muted-foreground">Layanan</span>
                 <span className="text-sm font-medium">{name}</span>
               </div>
               {room && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Kamar</span>
+                  <span className="text-sm text-muted-foreground">Detail</span>
                   <span className="text-sm font-medium">{room}</span>
                 </div>
               )}
@@ -62,14 +62,23 @@ const Booking = () => {
     );
   }
 
+  const getBackLink = () => {
+    switch (type) {
+      case "hotel": return "/hotels";
+      case "shuttle": return "/shuttle";
+      case "ride": return "/ride";
+      default: return "/";
+    }
+  };
+
   return (
     <Layout>
       <div className="bg-primary text-primary-foreground py-4">
         <div className="container mx-auto px-4 flex items-center gap-3">
-          <Link to={type === "hotel" ? "/hotels" : "/flights"}>
+          <Link to={getBackLink()}>
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-bold">Detail Pemesanan</h1>
+          <h1 className="text-lg font-bold">Konfirmasi Pemesanan</h1>
         </div>
       </div>
 

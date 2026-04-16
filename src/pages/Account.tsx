@@ -1,18 +1,12 @@
 import { useState } from "react";
-import { User, Mail, Lock, History, LogOut, Plane, Building2 } from "lucide-react";
+import { User, Mail, Lock, History, LogOut } from "lucide-react";
 import Layout from "@/components/Layout";
-import { bookingHistory, formatCurrency } from "@/data/dummyData";
+import { bookingHistory } from "@/data/bookingHistory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const statusColor: Record<string, string> = {
-  Confirmed: "bg-traveloka-green text-white",
-  Completed: "bg-muted text-muted-foreground",
-  Pending: "bg-traveloka-orange text-white",
-};
+import { BookingItem } from "@/components/account/BookingItem";
 
 const Account = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -96,25 +90,7 @@ const Account = () => {
         </div>
         <div className="space-y-3">
           {bookingHistory.map((b) => (
-            <Card key={b.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  {b.type === "hotel" ? (
-                    <Building2 className="w-5 h-5 text-primary" />
-                  ) : (
-                    <Plane className="w-5 h-5 text-primary" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-foreground truncate">{b.name}</p>
-                  <p className="text-xs text-muted-foreground">{b.date}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <Badge className={`${statusColor[b.status]} text-xs mb-1`}>{b.status}</Badge>
-                  <p className="text-sm font-bold text-primary">{formatCurrency(b.total)}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <BookingItem key={b.id} booking={b} />
           ))}
         </div>
       </div>

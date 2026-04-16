@@ -1,7 +1,7 @@
 {
   "name": "Traveloka Clone",
   "short_name": "Traveloka",
-  "description": "Book hotels and flights easily",
+  "description": "Book hotels, shuttle and rides easily",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0064D2",

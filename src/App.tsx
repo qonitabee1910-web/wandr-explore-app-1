@@ -6,7 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import Hotels from "./pages/Hotels";
 import HotelDetail from "./pages/HotelDetail";
-import Flights from "./pages/Flights";
+import Shuttle from "./pages/Shuttle";
+import ShuttleBooking from "./pages/ShuttleBooking";
+import Ride from "./pages/Ride";
+
 import Promos from "./pages/Promos";
 import Account from "./pages/Account";
 import Booking from "./pages/Booking";
@@ -24,7 +27,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/hotels" element={<Hotels />} />
           <Route path="/hotels/:id" element={<HotelDetail />} />
-          <Route path="/flights" element={<Flights />} />
+          <Route path="/shuttle" element={<Shuttle />} />
+          <Route path="/shuttle/booking" element={<ShuttleBooking />} />
+          <Route path="/ride" element={<Ride />} />
           <Route path="/promos" element={<Promos />} />
           <Route path="/account" element={<Account />} />
           <Route path="/booking" element={<Booking />} />
