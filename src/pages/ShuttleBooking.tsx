@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { ShuttleProvider, useShuttle } from '@/context/ShuttleContext';
 import { RayonSelection } from '@/components/shuttle/RayonSelection';
@@ -10,9 +10,22 @@ import { SeatSelection } from '@/components/shuttle/SeatSelection';
 import { BookingConfirmation } from '@/components/shuttle/BookingConfirmation';
 import { BookingSuccess } from '@/components/shuttle/BookingSuccess';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
+import { shuttleRayons } from '@/data/shuttleModule';
 
 const ShuttleBookingContent: React.FC = () => {
-  const { state } = useShuttle();
+  const { state, setRayon } = useShuttle();
+  const [searchParams] = useSearchParams();
+  const rayonId = searchParams.get('rayon');
+
+  useEffect(() => {
+    if (rayonId && !state.selectedRayon) {
+      const rayon = shuttleRayons.find(r => r.id === rayonId);
+      if (rayon) {
+        setRayon(rayon);
+      }
+    }
+  }, [rayonId, setRayon, state.selectedRayon]);
 
   const renderStep = () => {
     switch (state.step) {

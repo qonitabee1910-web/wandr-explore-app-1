@@ -121,50 +121,67 @@ export const shuttleVehicles: ShuttleVehicle[] = [
     capacity: 4, 
     basePrice: 50000,
     layout: { 
-      rows: 2, cols: 2, 
+      rows: 2, cols: 3, 
       seats: [
-        { id: "1-1", label: "1", isAvailable: true, type: "standard" },
-        { id: "1-2", label: "2", isAvailable: true, type: "standard" },
-        { id: "2-1", label: "3", isAvailable: true, type: "standard" },
-        { id: "2-2", label: "4", isAvailable: true, type: "standard" },
+        { id: "s-d", label: "1", isAvailable: true, type: "standard" },
+        { id: "s-1", label: "", isAvailable: false, type: "empty" },
+        { id: "s-2", label: "D", isAvailable: true, type: "driver" },
+        { id: "s-3", label: "2", isAvailable: true, type: "standard" },
+        { id: "s-4", label: "3", isAvailable: true, type: "standard" },
+        { id: "s-5", label: "4", isAvailable: true, type: "standard" },
       ]
     }
   },
   { 
     type: "SUV", 
-    capacity: 6, 
+    capacity: 7, 
     basePrice: 80000,
     layout: { 
-      rows: 3, cols: 2, 
+      rows: 3, cols: 3, 
       seats: [
-        { id: "1-1", label: "1", isAvailable: true, type: "standard" },
-        { id: "1-2", label: "2", isAvailable: true, type: "standard" },
-        { id: "2-1", label: "3", isAvailable: true, type: "standard" },
-        { id: "2-2", label: "4", isAvailable: true, type: "standard" },
-        { id: "3-1", label: "5", isAvailable: true, type: "standard" },
-        { id: "3-2", label: "6", isAvailable: true, type: "standard" },
+        { id: "s-1", label: "1", isAvailable: true, type: "standard" },
+        { id: "e-1", label: "", isAvailable: false, type: "empty" },
+        { id: "s-d", label: "D", isAvailable: true, type: "driver" },
+        { id: "s-2", label: "2", isAvailable: true, type: "standard" },
+        { id: "s-3", label: "3", isAvailable: true, type: "standard" },
+        { id: "s-4", label: "4", isAvailable: true, type: "standard" },
+        { id: "s-5", label: "5", isAvailable: true, type: "standard" },
+        { id: "s-6", label: "6", isAvailable: true, type: "standard" },
+        { id: "s-7", label: "7", isAvailable: true, type: "standard" },
       ]
     }
   },
   { 
     type: "Hiace", 
-    capacity: 12, 
-    basePrice: 150000,
+    capacity: 14, 
+    basePrice: 180000,
     layout: { 
-      rows: 4, cols: 3, 
+      rows: 5, cols: 4, 
       seats: [
-        { id: "1-1", label: "1", isAvailable: true, type: "standard" },
-        { id: "1-2", label: "2", isAvailable: true, type: "standard" },
-        { id: "1-3", label: "3", isAvailable: true, type: "standard" },
-        { id: "2-1", label: "4", isAvailable: true, type: "standard" },
-        { id: "2-2", label: "5", isAvailable: true, type: "standard" },
-        { id: "2-3", label: "6", isAvailable: true, type: "standard" },
-        { id: "3-1", label: "7", isAvailable: true, type: "standard" },
-        { id: "3-2", label: "8", isAvailable: true, type: "standard" },
-        { id: "3-3", label: "9", isAvailable: true, type: "standard" },
-        { id: "4-1", label: "10", isAvailable: true, type: "standard" },
-        { id: "4-2", label: "11", isAvailable: true, type: "standard" },
-        { id: "4-3", label: "12", isAvailable: true, type: "standard" },
+        { id: "s-1", label: "1", isAvailable: true, type: "standard" },
+        { id: "e-1", label: "", isAvailable: false, type: "empty" },
+        { id: "e-2", label: "", isAvailable: false, type: "empty" },
+        { id: "s-1", label: "D", isAvailable: false, type: "driver" },
+        
+        { id: "e-2", label: "", isAvailable: false, type: "empty" },
+        { id: "s-4", label: "4", isAvailable: true, type: "standard" },
+        { id: "s-3", label: "3", isAvailable: true, type: "standard" },
+        { id: "s-2", label: "2", isAvailable: true, type: "standard" }, // Door Area
+        
+        { id: "s-7", label: "7", isAvailable: true, type: "standard" },
+        { id: "e-3", label: "", isAvailable: false, type: "empty" },
+        { id: "s-6", label: "6", isAvailable: true, type: "standard" }, // Aisle  
+        { id: "s-5", label: "5", isAvailable: true, type: "standard" },
+        
+        { id: "s-10", label: "10", isAvailable: true, type: "standard" },
+        { id: "e-4", label: "", isAvailable: false, type: "empty" },
+        { id: "s-9", label: "9", isAvailable: true, type: "standard" }, // Aisle
+        { id: "s-8", label: "8", isAvailable: true, type: "standard" },
+        
+        { id: "s-14", label: "14", isAvailable: true, type: "standard" },
+        { id: "s-13", label: "13", isAvailable: true, type: "standard" },
+        { id: "s-12", label: "12", isAvailable: true, type: "standard" },
+        { id: "s-11", label: "11", isAvailable: true, type: "standard" },
       ]
     }
   },
