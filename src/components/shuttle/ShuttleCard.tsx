@@ -60,7 +60,7 @@ export const ShuttleCard = ({ shuttle }: ShuttleCardProps) => {
           {shuttle.meal && <Badge variant="secondary" className="text-xs">🍽️ Makan</Badge>}
           <div className="ml-auto">
             <Button asChild size="sm" className="rounded-full">
-              <Link to={`/booking?type=shuttle&name=${encodeURIComponent(shuttle.operator + " " + shuttle.from + " → " + shuttle.to)}&price=${shuttle.price}`}>
+              <Link to="/shuttle/booking">
                 Pilih
               </Link>
             </Button>
