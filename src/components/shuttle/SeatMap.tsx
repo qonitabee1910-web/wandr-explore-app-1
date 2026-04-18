@@ -12,27 +12,35 @@ interface SeatMapProps {
 
 const SeatMap = ({ seats, selectedIds, onToggle, baseImageUrl }: SeatMapProps) => {
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
-  const containerStyle = aspectRatio && baseImageUrl ? { aspectRatio: `${aspectRatio}` } : undefined;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const hasImage = Boolean(baseImageUrl);
+  const ready = !hasImage || (imgLoaded && aspectRatio);
+  const containerStyle = aspectRatio && hasImage ? { aspectRatio: `${aspectRatio}` } : undefined;
 
   return (
     <div
       style={containerStyle}
       className={cn(
         "relative w-full max-w-[320px] mx-auto rounded-2xl overflow-hidden bg-muted/30 border",
-        !(aspectRatio && baseImageUrl) && "aspect-[1/2]",
+        !(aspectRatio && hasImage) && "aspect-[1/2]",
+        hasImage && !ready && "min-h-[400px]",
       )}
     >
-      {baseImageUrl ? (
+      {hasImage ? (
         <img
-          src={baseImageUrl}
+          src={baseImageUrl!}
           alt="Denah kursi shuttle"
           onLoad={(e) => {
             const img = e.currentTarget;
             if (img.naturalWidth && img.naturalHeight) {
               setAspectRatio(img.naturalWidth / img.naturalHeight);
             }
+            setImgLoaded(true);
           }}
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+          className={cn(
+            "absolute inset-0 w-full h-full object-contain pointer-events-none select-none transition-opacity",
+            imgLoaded ? "opacity-100" : "opacity-0",
+          )}
           draggable={false}
         />
       ) : (
@@ -42,7 +50,11 @@ const SeatMap = ({ seats, selectedIds, onToggle, baseImageUrl }: SeatMapProps) =
         </div>
       )}
 
-      {seats.map((seat) => {
+      {hasImage && !ready && (
+        <div className="absolute inset-0 animate-pulse bg-muted/50" />
+      )}
+
+      {ready && seats.map((seat) => {
         const isSelected = selectedIds.includes(seat.id);
         const isOccupied = seat.status === "occupied";
         const disabled = isOccupied;

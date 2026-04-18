@@ -34,7 +34,7 @@ const SeatLayoutEditor = () => {
   const [params] = useSearchParams();
   const vehicleId = params.get("vehicle");
 
-  const [seats, setSeats] = useState<Seat[]>(() => getStoredSeats());
+  const [seats, setSeats] = useState<Seat[]>(() => (vehicleId ? [] : getStoredSeats()));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [vehicleName, setVehicleName] = useState<string>("");
@@ -56,7 +56,7 @@ const SeatLayoutEditor = () => {
         setVehicleName(data.name);
         setImageUrl(data.image_url ?? null);
         const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
-        if (layout.length > 0) setSeats(layout);
+        setSeats(layout);
       }
     })();
   }, [vehicleId]);
@@ -110,7 +110,10 @@ const SeatLayoutEditor = () => {
       return;
     }
     setImageUrl(publicUrl);
-    toast({ title: "Denah berhasil diupload" });
+    toast({
+      title: "Denah berhasil diupload",
+      description: "Periksa kembali posisi kursi terhadap denah baru.",
+    });
   };
 
   const selected = useMemo(
@@ -135,13 +138,19 @@ const SeatLayoutEditor = () => {
   };
 
   const handleReset = () => {
-    if (!confirm("Reset ke layout default? Perubahan lokal akan hilang.")) return;
     if (vehicleId) {
+      if (!confirm("Reset semua kursi? Klik Simpan ke Database setelahnya untuk menerapkan.")) return;
       setSeats([]);
-    } else {
-      clearSeatsStorage();
-      setSeats(DEFAULT_HIACE_SEATS);
+      setSelectedId(null);
+      toast({
+        title: "Layout direset",
+        description: "Jangan lupa klik Simpan ke Database untuk menerapkan.",
+      });
+      return;
     }
+    if (!confirm("Reset ke layout default? Perubahan lokal akan hilang.")) return;
+    clearSeatsStorage();
+    setSeats(DEFAULT_HIACE_SEATS);
     setSelectedId(null);
     toast({ title: "Layout direset" });
   };
