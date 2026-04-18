@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ImageOff } from "lucide-react";
+import { ImageOff, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Seat } from "@/data/seatLayout";
 
@@ -8,13 +8,16 @@ interface SeatEditorProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number) => void;
+  driverPos?: { x: number; y: number };
+  onMoveDriver?: (x: number, y: number) => void;
   baseImageUrl?: string | null;
   disabled?: boolean;
 }
 
-const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl, disabled }: SeatEditorProps) => {
+const SeatEditor = ({ seats, selectedId, onSelect, onMove, driverPos = { x: 50, y: 8 }, onMoveDriver, baseImageUrl, disabled }: SeatEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [draggingDriver, setDraggingDriver] = useState(false);
   const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -48,9 +51,40 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl, disable
 
   const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
     setDraggingId(null);
+    setDraggingDriver(false);
     setLivePos(null);
     try {
       (e.target as HTMLButtonElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* noop */
+    }
+  };
+
+  const handleDriverPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled || !onMoveDriver) return;
+    e.preventDefault();
+    (e.target as HTMLDivElement).setPointerCapture(e.pointerId);
+    setDraggingDriver(true);
+  };
+
+  const handleDriverPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingDriver || !onMoveDriver) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+    setLivePos({ x: clampedX, y: clampedY });
+    onMoveDriver(clampedX, clampedY);
+  };
+
+  const handleDriverPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setDraggingDriver(false);
+    setLivePos(null);
+    try {
+      (e.target as HTMLDivElement).releasePointerCapture(e.pointerId);
     } catch {
       /* noop */
     }
@@ -102,6 +136,30 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl, disable
       {draggingId && livePos && (
         <div className="absolute top-1 left-1 z-10 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded font-mono pointer-events-none">
           {livePos.x.toFixed(1)}%, {livePos.y.toFixed(1)}%
+        </div>
+      )}
+
+      {/* Driver Icon - dapat di-drag */}
+      {ready && (
+        <div
+          onPointerDown={handleDriverPointerDown}
+          onPointerMove={handleDriverPointerMove}
+          onPointerUp={handleDriverPointerUp}
+          onPointerCancel={handleDriverPointerUp}
+          style={{
+            left: `${driverPos.x}%`,
+            top: `${driverPos.y}%`,
+          }}
+          className={cn(
+            "absolute -translate-x-1/2 -translate-y-1/2",
+            "w-9 h-9 rounded-lg border-2 flex items-center justify-center",
+            "shadow-sm transition-all duration-150 touch-none",
+            "cursor-grab active:cursor-grabbing",
+            draggingDriver ? "scale-125 shadow-lg z-30 bg-orange-500/80 border-orange-500" : "bg-orange-500/40 border-orange-500/60 hover:bg-orange-500/50"
+          )}
+          title="Posisi Pengemudi (Drag untuk menggeser)"
+        >
+          <User className="w-5 h-5 text-orange-900" />
         </div>
       )}
 

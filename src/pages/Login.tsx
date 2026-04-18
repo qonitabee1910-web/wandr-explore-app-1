@@ -26,7 +26,16 @@ const LoginPage: React.FC = () => {
       if (authError) throw authError;
       if (!data.user) throw new Error('Login failed');
 
-      navigate('/');
+      // Check if user is admin
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id);
+
+      const isAdmin = (roles ?? []).some((r) => r.role === 'admin');
+      
+      // Redirect berdasarkan role
+      navigate(isAdmin ? '/admin' : '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

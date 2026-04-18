@@ -1,10 +1,18 @@
-import { Link, useLocation } from "react-router-dom";
-import { Bus, Car, Tag, User, Menu, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Bus, Car, Tag, User, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
+import { useUserAuth } from "@/context/UserAuthContext";
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, logout } = useUserAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   const links = [
     { path: "/shuttle", label: "Shuttle", icon: Bus },
@@ -40,6 +48,15 @@ const Navbar = () => {
               </Link>
             );
           })}
+          {isAuthenticated && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-foreground/10 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          )}
         </nav>
 
         {/* Mobile hamburger (hidden when bottom nav shows) */}
@@ -68,6 +85,18 @@ const Navbar = () => {
               </Link>
             );
           })}
+          {isAuthenticated && (
+            <button
+              onClick={() => {
+                setMobileOpen(false);
+                handleLogout();
+              }}
+              className="w-full text-left flex items-center gap-3 px-6 py-3 text-sm font-medium hover:bg-primary-foreground/10"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          )}
         </div>
       )}
     </header>

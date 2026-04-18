@@ -35,6 +35,7 @@ const SeatLayoutEditor = () => {
   const vehicleId = params.get("vehicle");
 
   const [seats, setSeats] = useState<Seat[]>(() => (vehicleId ? [] : getStoredSeats()));
+  const [driverPos, setDriverPos] = useState<{ x: number; y: number }>({ x: 50, y: 8 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [vehicleName, setVehicleName] = useState<string>("");
@@ -47,16 +48,42 @@ const SeatLayoutEditor = () => {
   useEffect(() => {
     if (!vehicleId) return;
     (async () => {
-      const { data } = await supabase
-        .from("vehicles")
-        .select("name, layout, image_url")
-        .eq("id", vehicleId)
-        .maybeSingle();
-      if (data) {
-        setVehicleName(data.name);
-        setImageUrl(data.image_url ?? null);
-        const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
-        setSeats(layout);
+      try {
+        const { data, error } = await supabase
+          .from("vehicles")
+          .select("name, layout, driver_pos, image_url")
+          .eq("id", vehicleId)
+          .maybeSingle();
+        
+        if (error) {
+          // If driver_pos column doesn't exist, try query without it
+          if (error.message.includes('driver_pos')) {
+            const { data: fallbackData } = await supabase
+              .from("vehicles")
+              .select("name, layout, image_url")
+              .eq("id", vehicleId)
+              .maybeSingle();
+            if (fallbackData) {
+              setVehicleName(fallbackData.name);
+              setImageUrl(fallbackData.image_url ?? null);
+              const layout = Array.isArray(fallbackData.layout) ? (fallbackData.layout as unknown as Seat[]) : [];
+              setSeats(layout);
+            }
+          }
+          return;
+        }
+        
+        if (data) {
+          setVehicleName(data.name);
+          setImageUrl(data.image_url ?? null);
+          const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
+          setSeats(layout);
+          if (data.driver_pos && typeof data.driver_pos === 'object') {
+            setDriverPos(data.driver_pos);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading vehicle:', err);
       }
     })();
   }, [vehicleId]);
@@ -165,13 +192,29 @@ const SeatLayoutEditor = () => {
     setSavingDb(true);
     const { error } = await supabase
       .from("vehicles")
-      .update({ layout: seats as any })
+      .update({ layout: seats as any, driver_pos: driverPos })
       .eq("id", vehicleId);
-    setSavingDb(false);
+    
     if (error) {
+      // If driver_pos column doesn't exist, try without it
+      if (error.message.includes('driver_pos')) {
+        const { error: retryError } = await supabase
+          .from("vehicles")
+          .update({ layout: seats as any })
+          .eq("id", vehicleId);
+        setSavingDb(false);
+        if (retryError) {
+          toast({ title: "Gagal menyimpan", description: retryError.message, variant: "destructive" });
+          return;
+        }
+        toast({ title: "Tersimpan ke database", description: vehicleName + " (tanpa posisi pengemudi)" });
+        return;
+      }
+      setSavingDb(false);
       toast({ title: "Gagal menyimpan", description: error.message, variant: "destructive" });
       return;
     }
+    setSavingDb(false);
     toast({ title: "Tersimpan ke database", description: vehicleName });
   };
 
@@ -290,7 +333,7 @@ const SeatLayoutEditor = () => {
         <Card className="mb-4">
           <CardContent className="p-4">
             <p className="text-xs text-center text-muted-foreground mb-3">
-              Tahan & geser kursi untuk mengatur posisi
+              Tahan & geser kursi untuk mengatur posisi. Orange icon adalah pengemudi.
             </p>
             <div className="relative">
               <SeatEditor
@@ -298,6 +341,8 @@ const SeatLayoutEditor = () => {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onMove={handleMove}
+                driverPos={driverPos}
+                onMoveDriver={setDriverPos}
                 baseImageUrl={imageUrl}
                 disabled={uploading}
               />
