@@ -1,62 +1,44 @@
 
 
-## Review & Fix: Konsistensi Tampilan Editor Admin ↔ Shuttle User
+## Cara Upload Gambar Denah Mobil
 
-### Issues Ditemukan
+### Status Saat Ini
+Fitur upload denah mobil **sudah lengkap & berfungsi** di codebase. Anda sekarang berada di `/admin/seat-editor` (tanpa parameter vehicle), itu sebabnya tombol Upload **tidak muncul** — upload denah memang dirancang per-vehicle dan butuh context vehicle ID.
 
-**1. 🔴 BUG CRITICAL — Initial seats dari localStorage di mode vehicle**
-`SeatLayoutEditor.tsx` line 37: `useState(() => getStoredSeats())` membaca seats dari localStorage. Saat admin buka editor untuk vehicle baru:
-- Awalnya tampil seats DARI vehicle LAIN (yang tersimpan di localStorage)
-- Kalau DB layout kosong (`length === 0`), kondisi `if (layout.length > 0)` tidak jalan → seats lokal tetap terpakai
-- Admin geser → klik "Simpan ke Database" → vehicle baru disimpan dengan layout milik vehicle lain ❌
+### Cara Pakai (sudah ada, tidak perlu ubah kode)
 
-→ **Fix**: Di mode vehicle (`vehicleId` ada), initial state `[]` dan selalu set dari DB (termasuk array kosong).
+**Alur yang benar:**
+1. Buka **Admin → Vehicles** (`/admin/vehicles`)
+2. Pilih kendaraan (Hiace / Elf / Bus) → klik tombol **Edit Layout** / icon kursi
+3. Editor terbuka dengan URL `/admin/seat-editor?vehicle=ID`
+4. Card **"Denah Kendaraan"** akan muncul di atas canvas → klik **Upload**
+5. Pilih file gambar (PNG/JPG/WebP, max 5MB)
+6. Tunggu loading overlay → denah otomatis tersimpan ke DB & langsung tampil
+7. Geser kursi sesuai denah → klik **Simpan ke Database**
 
-**2. 🟡 Visual jump saat image load (admin & user)**
-Saat pertama render, `aspectRatio` masih null → container pakai fallback `aspect-[1/2]`. Setelah `<img onLoad>`, aspect berubah → posisi visual kursi "loncat" karena container resize. UX tidak smooth.
+### Kenapa Tombol Upload Tidak Muncul Sekarang
+Lihat `SeatLayoutEditor.tsx` line 229: `{vehicleId && (...)}` — card upload hanya render kalau ada `?vehicle=ID` di URL. Ini disengaja agar tidak ada denah "yatim" tanpa vehicle pemilik.
 
-→ **Fix**: Tampilkan skeleton/blank container sampai image loaded jika `baseImageUrl` ada. Render kursi setelah aspect ready.
+### Issue Potensial yang Bisa Diperbaiki (opsional)
 
-**3. 🟡 Reset di mode vehicle tidak persisten**
-`handleReset` dengan `vehicleId` set `seats=[]` tapi tidak save ke DB. User di /shuttle masih lihat layout lama sampai admin klik "Simpan ke Database". Kalau admin lupa simpan → state inkonsisten.
+**A. UX bingung saat akses langsung `/admin/seat-editor`**
+User (seperti sekarang) buka editor tanpa context vehicle → lihat editor kosong tanpa tombol upload, tidak ada petunjuk harus dari mana.
 
-→ **Fix**: Tambah konfirmasi message yang lebih jelas: "Reset kursi (jangan lupa Simpan ke Database)".
+→ **Fix opsional**: Tampilkan banner peringatan di atas editor: *"Buka editor lewat halaman Vehicles untuk upload denah & simpan ke database"* + tombol shortcut ke `/admin/vehicles`.
 
-**4. 🟡 Reload setelah upload denah tidak refetch layout**
-Setelah upload denah, hanya `imageUrl` yang di-update di state. Layout di DB tidak berubah, OK. Tapi kalau aspect ratio image baru beda jauh dari sebelumnya, posisi kursi yang lama bisa tidak match dengan denah baru.
+**B. Tombol "Upload" terlihat kecil di card**
+Card denah pakai layout horizontal — di viewport sempit (522px sekarang), label tombol "Upload"/"Ganti" bisa kepotong.
 
-→ **Catatan**: Tidak fix otomatis — beri warning toast: "Periksa posisi kursi setelah upload denah baru."
+→ **Fix opsional**: Stack vertikal di mobile, full-width button.
 
-**5. 🟢 Konfirmasi konsistensi visual (sudah OK)**
-- Container: `max-w-[320px] mx-auto rounded-2xl bg-muted/30 border` ✅ identik
-- Image: `object-contain pointer-events-none select-none` ✅ identik
-- Aspect: dynamic dari `naturalWidth/naturalHeight` ✅ identik
-- Kursi: `w-9 h-9 rounded-lg border-2 text-[10px] font-bold` ✅ identik
-- Posisi: `left/top` % + `-translate-x-1/2 -translate-y-1/2` ✅ identik
+### Yang Akan Diubah (jika setuju)
+- `src/pages/SeatLayoutEditor.tsx` — tambah banner info kalau `!vehicleId`, perbaiki responsive card upload
 
-→ Tampilan akan **persis sama** antara editor dan user, ASAL bug #1 di atas tidak terjadi.
-
-### Yang Akan Diubah
-
-**`src/pages/SeatLayoutEditor.tsx`**
-- Initial state: `useState<Seat[]>(vehicleId ? [] : getStoredSeats())`
-- `useEffect` load DB: hapus kondisi `if (layout.length > 0)` — selalu set `setSeats(layout)` (boleh kosong)
-- `handleFileSelected`: setelah sukses upload, tambah toast warning "Periksa kembali posisi kursi terhadap denah baru"
-- `handleReset` (mode vehicle): ubah pesan konfirmasi dan toast jadi "Layout direset — klik Simpan ke Database untuk menerapkan"
-
-**`src/components/shuttle/SeatEditor.tsx` & `SeatMap.tsx`**
-- Tambah state `imgLoaded` di kedua file
-- Saat `baseImageUrl` ada tapi `imgLoaded=false`: tampilkan skeleton/dim overlay supaya tidak ada visual jump
-- Render kursi tetap tampil (posisi % stabil), tapi container pakai `min-h-[400px]` placeholder sampai image ready
-
-### File yang Disentuh
-- `src/pages/SeatLayoutEditor.tsx` — fix bug initial state + toast warning
-- `src/components/shuttle/SeatEditor.tsx` — smooth image load
-- `src/components/shuttle/SeatMap.tsx` — smooth image load (sama)
+### Yang TIDAK Diubah
+- Logika upload (sudah benar)
+- Storage bucket `vehicle-layouts` (sudah ada & public)
+- Schema DB (kolom `image_url` sudah ada di `vehicles`)
 
 ### Hasil
-- Admin buka editor vehicle X → layout vehicle X, bukan localStorage milik vehicle lain
-- Tampilan editor admin **persis sama** dengan tampilan user di /shuttle (aspect, posisi, ukuran kursi)
-- Image load smooth tanpa visual jump
-- Admin paham reset & upload denah baru perlu klik Simpan ke Database
+User langsung paham harus akses editor dari halaman Vehicles untuk upload denah. Tombol upload lebih nyaman di layar kecil.
 
