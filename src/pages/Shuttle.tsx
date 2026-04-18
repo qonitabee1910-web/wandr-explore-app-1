@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Pencil } from "lucide-react";
 import Layout from "@/components/Layout";
 import SeatMap from "@/components/shuttle/SeatMap";
 import { HIACE_SEATS, SEAT_PRICE } from "@/data/seatLayout";
@@ -50,7 +50,14 @@ const Shuttle = () => {
           <Link to="/" aria-label="Kembali">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-bold tracking-tight">Pilih Kursi Shuttle</h1>
+          <h1 className="text-lg font-bold tracking-tight flex-1">Pilih Kursi Shuttle</h1>
+          <Link
+            to="/shuttle/editor"
+            aria-label="Edit layout kursi"
+            className="opacity-90 hover:opacity-100"
+          >
+            <Pencil className="w-4 h-4" />
+          </Link>
         </div>
       </div>
 

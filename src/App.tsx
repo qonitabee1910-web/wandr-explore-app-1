@@ -7,6 +7,7 @@ import { UserAuthProvider } from "@/context/UserAuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Shuttle from "./pages/Shuttle";
+import SeatLayoutEditor from "./pages/SeatLayoutEditor";
 import Ride from "./pages/Ride";
 import Promos from "./pages/Promos";
 import Account from "./pages/Account";
@@ -39,6 +40,7 @@ const App = () => (
 
             {/* Protected user routes */}
             <Route path="/shuttle" element={<ProtectedRoute><Shuttle /></ProtectedRoute>} />
+            <Route path="/shuttle/editor" element={<ProtectedRoute><SeatLayoutEditor /></ProtectedRoute>} />
             <Route path="/ride" element={<ProtectedRoute><Ride /></ProtectedRoute>} />
             <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
             <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
