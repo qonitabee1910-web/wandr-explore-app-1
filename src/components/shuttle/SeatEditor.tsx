@@ -17,6 +17,9 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl, disable
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const hasImage = Boolean(baseImageUrl);
+  const ready = !hasImage || (imgLoaded && aspectRatio);
 
   const updateFromPointer = (id: string, clientX: number, clientY: number) => {
     const el = containerRef.current;
