@@ -244,6 +244,8 @@ export type Database = {
           origin: string
           slug: string
           updated_at: string
+          distance_km: number | null
+          estimated_duration_mins: number | null
         }
         Insert: {
           created_at?: string
@@ -255,6 +257,8 @@ export type Database = {
           origin: string
           slug: string
           updated_at?: string
+          distance_km?: number | null
+          estimated_duration_mins?: number | null
         }
         Update: {
           created_at?: string
@@ -266,48 +270,38 @@ export type Database = {
           origin?: string
           slug?: string
           updated_at?: string
+          distance_km?: number | null
+          estimated_duration_mins?: number | null
         }
         Relationships: []
       }
       shuttle_schedules: {
         Row: {
           arrival_time: string
-          available_seats: number
           created_at: string
           departure_time: string
           id: string
           is_active: boolean | null
-          price_executive: number
-          price_regular: number
-          price_vip: number
           route_id: string
           updated_at: string
           vehicle_id: string
         }
         Insert: {
           arrival_time: string
-          available_seats: number
           created_at?: string
           departure_time: string
           id?: string
           is_active?: boolean | null
-          price_executive: number
-          price_regular: number
-          price_vip: number
           route_id: string
           updated_at?: string
           vehicle_id: string
         }
         Update: {
           arrival_time?: string
-          available_seats?: number
           created_at?: string
           departure_time?: string
           id?: string
           is_active?: boolean | null
-          price_executive?: number
-          price_regular?: number
-          price_vip?: number
           route_id?: string
           updated_at?: string
           vehicle_id?: string
@@ -486,6 +480,7 @@ export type Database = {
           created_at: string
           description: string | null
           driver_pos: Json | null
+          driver_size: Json | null
           id: string
           image_url: string | null
           is_active: boolean
@@ -498,6 +493,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           driver_pos?: Json | null
+          driver_size?: Json | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -510,6 +506,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           driver_pos?: Json | null
+          driver_size?: Json | null
           id?: string
           image_url?: string | null
           is_active?: boolean

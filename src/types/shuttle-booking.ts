@@ -11,6 +11,8 @@ export interface ShuttleRoute {
   origin: string;
   destination: string;
   description?: string;
+  distance_km: number | null;
+  estimated_duration_mins: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -22,10 +24,6 @@ export interface ShuttleSchedule {
   departure_time: string;
   arrival_time: string;
   vehicle_id: string;
-  price_regular: number;
-  price_executive: number;
-  price_vip: number;
-  available_seats: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -48,7 +46,6 @@ export interface Vehicle {
   id: string;
   name: string;
   plate_number?: string;
-  capacity: number;
   layout?: any[];
   image_url?: string;
   is_active: boolean;
@@ -103,17 +100,6 @@ export interface ShuttleBooking {
   notes?: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface Vehicle {
-  id: string;
-  name: string;
-  plate_number: string;
-  capacity: number;
-  layout?: any[];
-  image_url?: string;
-  is_active: boolean;
-  created_at: string;
 }
 
 export interface ShuttleBookingSession {

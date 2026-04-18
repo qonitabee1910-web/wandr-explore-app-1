@@ -49,11 +49,13 @@ const SeatLayoutEditor = () => {
     reset: resetEditor
   } = useUndoRedo({
     seats: initialSeats,
-    driverPos: initialDriverPos
+    driverPos: initialDriverPos,
+    driverSize: { width: 11.25, height: 11.25 }
   });
 
-  const seats = editorState.seats;
-  const driverPos = editorState.driverPos;
+  const seats = editorState?.seats || [];
+  const driverPos = editorState?.driverPos || initialDriverPos;
+  const driverSize = editorState?.driverSize || { width: 11.25, height: 11.25 };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [vehicleName, setVehicleName] = useState<string>("");
@@ -69,26 +71,36 @@ const SeatLayoutEditor = () => {
     if (!vehicleId) return;
     (async () => {
       try {
+        // Try with all columns first
         const { data, error } = await supabase
           .from("vehicles")
-          .select("name, layout, driver_pos, image_url")
+          .select("name, layout, driver_pos, driver_size, image_url")
           .eq("id", vehicleId)
           .maybeSingle();
         
         if (error) {
-          // If driver_pos column doesn't exist, try query without it
-          if (error.message.includes('driver_pos')) {
-            const { data: fallbackData } = await supabase
-              .from("vehicles")
-              .select("name, layout, image_url")
-              .eq("id", vehicleId)
-              .maybeSingle();
-            if (fallbackData) {
-              setVehicleName(fallbackData.name);
-              setImageUrl(fallbackData.image_url ?? null);
-              const layout = Array.isArray(fallbackData.layout) ? (fallbackData.layout as unknown as Seat[]) : [];
-              resetEditor({ seats: layout, driverPos: initialDriverPos });
-            }
+          console.warn('First query failed, trying fallback:', error.message);
+          // Fallback to basic columns if any specialized columns fail
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("vehicles")
+            .select("name, layout, image_url")
+            .eq("id", vehicleId)
+            .maybeSingle();
+          
+          if (fallbackError) {
+            console.error('Fallback query failed:', fallbackError.message);
+            return;
+          }
+
+          if (fallbackData) {
+            setVehicleName(fallbackData.name);
+            setImageUrl(fallbackData.image_url ?? null);
+            const layout = Array.isArray(fallbackData.layout) ? (fallbackData.layout as unknown as Seat[]) : [];
+            resetEditor({ 
+              seats: layout, 
+              driverPos: initialDriverPos,
+              driverSize: { width: 11.25, height: 11.25 }
+            });
           }
           return;
         }
@@ -99,14 +111,22 @@ const SeatLayoutEditor = () => {
           const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
           
           let dPos = initialDriverPos;
-          if (data.driver_pos && typeof data.driver_pos === 'object' && !Array.isArray(data.driver_pos)) {
-            const obj = data.driver_pos as Record<string, any>;
-            if (typeof obj.x === 'number' && typeof obj.y === 'number') {
-              dPos = { x: obj.x, y: obj.y };
+          const rawDriverPos = (data as any).driver_pos;
+          if (rawDriverPos && typeof rawDriverPos === 'object' && !Array.isArray(rawDriverPos)) {
+            if (typeof rawDriverPos.x === 'number' && typeof rawDriverPos.y === 'number') {
+              dPos = { x: rawDriverPos.x, y: rawDriverPos.y };
+            }
+          }
+
+          let dSize = { width: 11.25, height: 11.25 };
+          const rawDriverSize = (data as any).driver_size;
+          if (rawDriverSize && typeof rawDriverSize === 'object' && !Array.isArray(rawDriverSize)) {
+            if (typeof rawDriverSize.width === 'number' && typeof rawDriverSize.height === 'number') {
+              dSize = { width: rawDriverSize.width, height: rawDriverSize.height };
             }
           }
           
-          resetEditor({ seats: layout, driverPos: dPos });
+          resetEditor({ seats: layout, driverPos: dPos, driverSize: dSize });
         }
       } catch (err) {
         console.error('Error loading vehicle:', err);
@@ -208,6 +228,14 @@ const SeatLayoutEditor = () => {
     }));
   };
 
+  const handleResizeDriver = (width: number, height: number, x: number, y: number) => {
+    setEditorState((prev: any) => ({
+      ...prev,
+      driverPos: { x, y },
+      driverSize: { width, height }
+    }));
+  };
+
   const handleAdd = () => {
     let n = seats.length + 1;
     let newId = `S${n}`;
@@ -226,7 +254,11 @@ const SeatLayoutEditor = () => {
   const handleReset = () => {
     if (vehicleId) {
       if (!confirm("Reset semua kursi? Klik Simpan ke Database setelahnya untuk menerapkan.")) return;
-      setEditorState({ seats: [], driverPos: initialDriverPos });
+      setEditorState({ 
+        seats: [], 
+        driverPos: initialDriverPos,
+        driverSize: { width: 11.25, height: 11.25 }
+      });
       setSelectedId(null);
       toast({
         title: "Layout direset",
@@ -236,7 +268,11 @@ const SeatLayoutEditor = () => {
     }
     if (!confirm("Reset ke layout default? Perubahan lokal akan hilang.")) return;
     clearSeatsStorage();
-    resetEditor({ seats: DEFAULT_HIACE_SEATS, driverPos: initialDriverPos });
+    resetEditor({ 
+      seats: DEFAULT_HIACE_SEATS, 
+      driverPos: initialDriverPos,
+      driverSize: { width: 11.25, height: 11.25 }
+    });
     setSelectedId(null);
     toast({ title: "Layout direset" });
   };
@@ -251,12 +287,16 @@ const SeatLayoutEditor = () => {
     setSavingDb(true);
     const { error } = await supabase
       .from("vehicles")
-      .update({ layout: seats as any, driver_pos: driverPos })
+      .update({ 
+        layout: seats as any, 
+        driver_pos: driverPos,
+        driver_size: driverSize
+      })
       .eq("id", vehicleId);
     
     if (error) {
       // If driver_pos column doesn't exist, try without it
-      if (error.message.includes('driver_pos')) {
+      if (error.message.includes('driver_pos') || error.message.includes('driver_size')) {
         const { error: retryError } = await supabase
           .from("vehicles")
           .update({ layout: seats as any })
@@ -266,7 +306,7 @@ const SeatLayoutEditor = () => {
           toast({ title: "Gagal menyimpan", description: retryError.message, variant: "destructive" });
           return;
         }
-        toast({ title: "Tersimpan ke database", description: vehicleName + " (tanpa posisi pengemudi)" });
+        toast({ title: "Tersimpan ke database", description: vehicleName + " (tanpa data pengemudi)" });
         return;
       }
       setSavingDb(false);
@@ -279,6 +319,7 @@ const SeatLayoutEditor = () => {
 
   const handleDelete = () => {
     if (!selected) return;
+    if (!confirm(`Hapus kursi ${selected.label}?`)) return;
     setEditorState((prev) => ({
       ...prev,
       seats: prev.seats.filter((s) => s.id !== selected.id)
@@ -446,7 +487,9 @@ const SeatLayoutEditor = () => {
                   onMove={handleMove}
                   onResize={handleResize}
                   driverPos={driverPos}
+                  driverSize={driverSize}
                   onMoveDriver={handleMoveDriver}
+                  onResizeDriver={handleResizeDriver}
                   baseImageUrl={imageUrl}
                   disabled={uploading}
                   showGrid={showGrid}
@@ -466,11 +509,46 @@ const SeatLayoutEditor = () => {
 
         <Card>
           <CardContent className="p-4">
-            {!selected ? (
+            {!selectedId ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Pilih kursi untuk mengedit
+                Pilih kursi atau pengemudi untuk mengedit
               </p>
-            ) : (
+            ) : selectedId === 'driver' ? (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold">
+                  Edit: <span className="text-orange-500">Pengemudi</span>
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">X (%)</Label>
+                    <Input type="number" step="0.1" value={driverPos.x}
+                      onChange={(e) => handleMoveDriver(Number(e.target.value), driverPos.y)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Y (%)</Label>
+                    <Input type="number" step="0.1" value={driverPos.y}
+                      onChange={(e) => handleMoveDriver(driverPos.x, Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Width (%)</Label>
+                    <Input type="number" step="0.1" value={driverSize.width}
+                      onChange={(e) => handleResizeDriver(Number(e.target.value), driverSize.height, driverPos.x, driverPos.y)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Height (%)</Label>
+                    <Input type="number" step="0.1" value={driverSize.height}
+                      onChange={(e) => handleResizeDriver(driverSize.width, Number(e.target.value), driverPos.x, driverPos.y)}
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Gunakan Shift + Drag pada handle untuk resize proporsional.
+                </p>
+              </div>
+            ) : selected ? (
               <div className="space-y-3">
                 <p className="text-sm font-semibold">
                   Edit kursi: <span className="text-primary">{selected.label}</span>
@@ -512,6 +590,38 @@ const SeatLayoutEditor = () => {
                       onChange={(e) => updateSelected({ y: Math.max(0, Math.min(100, Number(e.target.value))) })}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="seat-w" className="text-xs">Width (%)</Label>
+                    <Input id="seat-w" type="number" step="0.1" min="1" max="100" value={selected.width || 11.25}
+                      onChange={(e) => updateSelected({ width: Math.max(1, Math.min(100, Number(e.target.value))) })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="seat-h" className="text-xs">Height (%)</Label>
+                    <Input id="seat-h" type="number" step="0.1" min="1" max="100" value={selected.height || 11.25}
+                      onChange={(e) => updateSelected({ height: Math.max(1, Math.min(100, Number(e.target.value))) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    size="sm" 
+                    className="flex-1 text-[10px]"
+                    onClick={() => {
+                      const w = selected.width || 11.25;
+                      const h = selected.height || 11.25;
+                      setEditorState(prev => ({
+                        ...prev,
+                        seats: prev.seats.map(s => ({ ...s, width: w, height: h }))
+                      }));
+                      toast({ title: "Ukuran diterapkan ke semua kursi" });
+                    }}
+                  >
+                    Terapkan Ukuran ke Semua
+                  </Button>
                 </div>
 
                 <div>
@@ -532,7 +642,7 @@ const SeatLayoutEditor = () => {
                   <Trash2 className="w-4 h-4" /> Hapus Kursi
                 </Button>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>

@@ -83,9 +83,9 @@ export const ShuttleBookingProvider: React.FC<{ children: React.ReactNode }> = (
 
   const calculateTotal = useCallback(() => {
     if (!session.selectedSchedule || !session.selectedService) return 0;
-    const priceKey = `price_${session.selectedService}` as keyof ShuttleSchedule;
-    const pricePerSeat = (session.selectedSchedule[priceKey] as number) || 0;
-    return pricePerSeat * session.selectedSeats.length;
+    // Pricing is now dynamic and calculated in the UI components 
+    // or fetched based on Rayon/Pickup point.
+    return 0;
   }, [session.selectedSchedule, session.selectedService, session.selectedSeats]);
 
   const goToStep = useCallback((step: ShuttleBookingSession['step']) => {

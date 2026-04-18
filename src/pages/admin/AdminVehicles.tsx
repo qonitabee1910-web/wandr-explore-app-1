@@ -76,7 +76,11 @@ export default function AdminVehicles() {
     load();
   };
 
-  const seatCount = (layout: any) => Array.isArray(layout) ? layout.length : 0;
+  const seatCount = (layout: any) => {
+    if (Array.isArray(layout)) return layout.length;
+    if (layout && typeof layout === 'object' && Array.isArray(layout.seats)) return layout.seats.length;
+    return 0;
+  };
 
   return (
     <div className="space-y-6">

@@ -10,7 +10,9 @@ interface SeatEditorProps {
   onMove: (id: string, x: number, y: number) => void;
   onResize?: (id: string, width: number, height: number, x: number, y: number) => void;
   driverPos?: { x: number; y: number };
+  driverSize?: { width: number; height: number };
   onMoveDriver?: (x: number, y: number) => void;
+  onResizeDriver?: (width: number, height: number, x: number, y: number) => void;
   baseImageUrl?: string | null;
   disabled?: boolean;
   showGrid?: boolean;
@@ -24,16 +26,19 @@ const SeatEditor = ({
   onMove, 
   onResize,
   driverPos = { x: 50, y: 8 }, 
+  driverSize = { width: 11.25, height: 11.25 },
   onMoveDriver, 
+  onResizeDriver,
   baseImageUrl, 
   disabled,
   showGrid = false,
-  gridSize = 5
+  gridSize = 2.5
 }: SeatEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [resizingId, setResizingId] = useState<string | null>(null);
   const [resizeDir, setResizeDir] = useState<string | null>(null);
+  const [isResizingDriver, setIsResizingDriver] = useState(false);
   const [draggingDriver, setDraggingDriver] = useState(false);
   const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
   const [liveSize, setLiveSize] = useState<{ w: number; h: number } | null>(null);
@@ -64,12 +69,16 @@ const SeatEditor = ({
   };
 
   const handleResizePointerMove = (e: PointerEvent) => {
-    if (!resizingId || !resizeDir || !onResize) return;
+    if ((!resizingId && !isResizingDriver) || !resizeDir) return;
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const seat = seats.find(s => s.id === resizingId);
-    if (!seat) return;
+    
+    const target = isResizingDriver 
+      ? { x: driverPos.x, y: driverPos.y, width: driverSize.width, height: driverSize.height }
+      : seats.find(s => s.id === resizingId);
+      
+    if (!target) return;
 
     let mouseX = ((e.clientX - rect.left) / rect.width) * 100;
     let mouseY = ((e.clientY - rect.top) / rect.height) * 100;
@@ -77,19 +86,40 @@ const SeatEditor = ({
     mouseX = snap(mouseX);
     mouseY = snap(mouseY);
 
-    const currentW = seat.width || 11.25; // Default ~36px
-    const currentH = seat.height || (aspectRatio ? 11.25 / aspectRatio : 11.25);
+    const currentW = target.width || 11.25; 
+    const currentH = target.height || (aspectRatio ? 11.25 / aspectRatio : 11.25);
 
-    // Calculate boundaries of the seat in %
-    let left = seat.x - currentW / 2;
-    let right = seat.x + currentW / 2;
-    let top = seat.y - currentH / 2;
-    let bottom = seat.y + currentH / 2;
+    // Calculate boundaries in %
+    let left = target.x - currentW / 2;
+    let right = target.x + currentW / 2;
+    let top = target.y - currentH / 2;
+    let bottom = target.y + currentH / 2;
 
-    if (resizeDir.includes('e')) right = Math.max(left + gridSize, Math.min(100, mouseX));
-    if (resizeDir.includes('w')) left = Math.max(0, Math.min(right - gridSize, mouseX));
-    if (resizeDir.includes('s')) bottom = Math.max(top + gridSize, Math.min(100, mouseY));
-    if (resizeDir.includes('n')) top = Math.max(0, Math.min(bottom - gridSize, mouseY));
+    const minSize = Math.max(gridSize, 2); // Minimum 2% or gridSize
+
+    if (resizeDir.includes('e')) right = Math.max(left + minSize, Math.min(100, mouseX));
+    if (resizeDir.includes('w')) left = Math.max(0, Math.min(right - minSize, mouseX));
+    if (resizeDir.includes('s')) bottom = Math.max(top + minSize, Math.min(100, mouseY));
+    if (resizeDir.includes('n')) top = Math.max(0, Math.min(bottom - minSize, mouseY));
+
+    // Shift Key for proportional resizing
+    if (e.shiftKey) {
+      const ratio = currentW / currentH;
+      let newW = right - left;
+      let newH = bottom - top;
+      
+      if (resizeDir.includes('e') || resizeDir.includes('w')) {
+        newH = newW / ratio;
+      } else {
+        newW = newH * ratio;
+      }
+      
+      // Update boundaries based on ratio
+      if (resizeDir.includes('e')) right = left + newW;
+      if (resizeDir.includes('w')) left = right - newW;
+      if (resizeDir.includes('s')) bottom = top + newH;
+      if (resizeDir.includes('n')) top = bottom - newH;
+    }
 
     const newW = snap(right - left);
     const newH = snap(bottom - top);
@@ -98,7 +128,12 @@ const SeatEditor = ({
 
     setLiveSize({ w: newW, h: newH });
     setLivePos({ x: newX, y: newY });
-    onResize(resizingId, newW, newH, newX, newY);
+
+    if (isResizingDriver && onResizeDriver) {
+      onResizeDriver(newW, newH, newX, newY);
+    } else if (resizingId && onResize) {
+      onResize(resizingId, newW, newH, newX, newY);
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>, id: string) => {
@@ -118,6 +153,7 @@ const SeatEditor = ({
     setDraggingId(null);
     setDraggingDriver(false);
     setResizingId(null);
+    setIsResizingDriver(false);
     setResizeDir(null);
     setLivePos(null);
     setLiveSize(null);
@@ -128,21 +164,27 @@ const SeatEditor = ({
     }
   };
 
-  const handleResizePointerDown = (e: React.PointerEvent, id: string, dir: string) => {
-    if (disabled || !onResize) return;
+  const handleResizePointerDown = (e: React.PointerEvent, id: string | 'driver', dir: string) => {
+    if (disabled) return;
     e.stopPropagation();
     (e.target as HTMLDivElement).setPointerCapture(e.pointerId);
-    setResizingId(id);
+    if (id === 'driver') {
+      setIsResizingDriver(true);
+      onSelect('driver');
+    } else {
+      setResizingId(id);
+    }
     setResizeDir(dir);
   };
 
   const handleResizeMove = (e: React.PointerEvent) => {
-    if (!resizingId) return;
+    if (!resizingId && !isResizingDriver) return;
     handleResizePointerMove(e.nativeEvent);
   };
 
   const handleResizeUp = (e: React.PointerEvent) => {
     setResizingId(null);
+    setIsResizingDriver(false);
     setResizeDir(null);
     setLiveSize(null);
     setLivePos(null);
@@ -201,20 +243,6 @@ const SeatEditor = ({
       )}
       onClick={() => onSelect(null)}
     >
-      {/* Grid Overlay */}
-      {showGrid && ready && (
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            {Array.from({ length: Math.floor(100 / gridSize) + 1 }).map((_, i) => (
-              <line key={`v-${i}`} x1={`${i * gridSize}%`} y1="0" x2={`${i * gridSize}%`} y2="100%" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.1" className="text-foreground" />
-            ))}
-            {Array.from({ length: Math.floor(100 / gridSize) + 1 }).map((_, i) => (
-              <line key={`h-${i}`} x1="0" y1={`${i * gridSize}%`} x2="100%" y2={`${i * gridSize}%`} stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.1" className="text-foreground" />
-            ))}
-          </svg>
-        </div>
-      )}
-
       {hasImage ? (
         <img
           src={baseImageUrl!}
@@ -239,6 +267,42 @@ const SeatEditor = ({
         </div>
       )}
 
+      {/* Grid Overlay - Moved after image to be on top */}
+      {showGrid && ready && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            {/* Horizontal lines */}
+            {Array.from({ length: Math.floor(100 / gridSize) + 1 }).map((_, i) => (
+              <line 
+                key={`h-${i}`} 
+                x1="0" 
+                y1={`${i * gridSize}%`} 
+                x2="100%" 
+                y2={`${i * gridSize}%`} 
+                stroke="currentColor" 
+                strokeWidth={i % 4 === 0 ? "0.8" : "0.4"} 
+                strokeOpacity={i % 4 === 0 ? "0.3" : "0.15"} 
+                className="text-foreground" 
+              />
+            ))}
+            {/* Vertical lines */}
+            {Array.from({ length: Math.floor(100 / gridSize) + 1 }).map((_, i) => (
+              <line 
+                key={`v-${i}`} 
+                x1={`${i * gridSize}%`} 
+                y1="0" 
+                x2={`${i * gridSize}%`} 
+                y2="100%" 
+                stroke="currentColor" 
+                strokeWidth={i % 4 === 0 ? "0.8" : "0.4"} 
+                strokeOpacity={i % 4 === 0 ? "0.3" : "0.15"} 
+                className="text-foreground" 
+              />
+            ))}
+          </svg>
+        </div>
+      )}
+
       {hasImage && !ready && (
         <div className="absolute inset-0 animate-pulse bg-muted/50" />
       )}
@@ -260,17 +324,54 @@ const SeatEditor = ({
           style={{
             left: `${driverPos.x}%`,
             top: `${driverPos.y}%`,
+            width: `${driverSize.width}%`,
+            height: `${driverSize.height}%`,
           }}
           className={cn(
             "absolute -translate-x-1/2 -translate-y-1/2",
-            "w-9 h-9 rounded-lg border-2 flex items-center justify-center",
+            "rounded-lg border-2 flex items-center justify-center",
             "shadow-sm transition-all duration-150 touch-none z-30",
             "cursor-grab active:cursor-grabbing",
-            draggingDriver ? "scale-125 shadow-lg bg-orange-500/80 border-orange-500" : "bg-orange-500/40 border-orange-500/60 hover:bg-orange-500/50"
+            draggingDriver ? "scale-125 shadow-lg bg-orange-500/80 border-orange-500" : "bg-orange-500/40 border-orange-500/60 hover:bg-orange-500/50",
+            selectedId === 'driver' && "ring-2 ring-orange-500 ring-offset-2"
           )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect('driver');
+          }}
           title="Posisi Pengemudi (Drag untuk menggeser)"
         >
           <User className="w-5 h-5 text-orange-900" />
+          
+          {/* Driver Resizing Handles */}
+          {selectedId === 'driver' && onResizeDriver && (
+            <>
+              <div 
+                onPointerDown={(e) => handleResizePointerDown(e, 'driver', 'nw')}
+                onPointerMove={handleResizeMove}
+                onPointerUp={handleResizeUp}
+                className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-orange-500 rounded-full cursor-nw-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+              />
+              <div 
+                onPointerDown={(e) => handleResizePointerDown(e, 'driver', 'ne')}
+                onPointerMove={handleResizeMove}
+                onPointerUp={handleResizeUp}
+                className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-orange-500 rounded-full cursor-ne-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+              />
+              <div 
+                onPointerDown={(e) => handleResizePointerDown(e, 'driver', 'sw')}
+                onPointerMove={handleResizeMove}
+                onPointerUp={handleResizeUp}
+                className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-orange-500 rounded-full cursor-sw-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+              />
+              <div 
+                onPointerDown={(e) => handleResizePointerDown(e, 'driver', 'se')}
+                onPointerMove={handleResizeMove}
+                onPointerUp={handleResizeUp}
+                className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-orange-500 rounded-full cursor-se-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+              />
+            </>
+          )}
         </div>
       )}
 

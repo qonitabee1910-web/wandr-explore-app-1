@@ -64,19 +64,7 @@ const Booking = () => {
 
         if (error) throw error;
 
-        // Update available seats in schedule
-        const { data: schedule } = await supabase
-          .from("shuttle_schedules")
-          .select("available_seats")
-          .eq("id", scheduleId)
-          .single();
-
-        if (schedule) {
-          await supabase
-            .from("shuttle_schedules")
-            .update({ available_seats: Math.max(0, schedule.available_seats - seats.length) })
-            .eq("id", scheduleId);
-        }
+        // No manual available_seats update needed, calculated from layout-bookings
         
         // Simuasi Notifikasi Email
         toast({

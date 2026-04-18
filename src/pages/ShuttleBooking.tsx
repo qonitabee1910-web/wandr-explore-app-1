@@ -282,7 +282,9 @@ const ShuttleBooking = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <Badge variant="outline">{schedule.available_seats} kursi</Badge>
+                        <Badge variant="outline">
+                          {Array.isArray(schedule.vehicle?.layout) ? schedule.vehicle.layout.length : 0} kursi
+                        </Badge>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
@@ -318,8 +320,6 @@ const ShuttleBooking = () => {
           <div className="space-y-4">
             {(['regular', 'executive', 'vip'] as const).map((serviceType) => {
               const service = SERVICE_DESCRIPTIONS[serviceType];
-              const priceKey = `price_${serviceType}` as keyof ShuttleSchedule;
-              const price = session.selectedSchedule?.[priceKey] || 0;
 
               return (
                 <Card
@@ -333,7 +333,7 @@ const ShuttleBooking = () => {
                         <h3 className="font-bold text-lg">{service.name}</h3>
                         <p className="text-sm text-muted-foreground">{service.description}</p>
                       </div>
-                      <p className="text-lg font-bold text-primary shrink-0">{formatCurrency(price)}</p>
+                      <Badge variant="outline" className="text-primary shrink-0">Otomatis</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {service.features.map((feature, idx) => (

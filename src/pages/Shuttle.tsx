@@ -5,7 +5,7 @@ import Layout from "@/components/Layout";
 import SeatMap from "@/components/shuttle/SeatMap";
 import { type Seat } from "@/data/seatLayout";
 import { RAYON_DATA } from "@/data/rayonPoints";
-import { calculateShuttleFare, getDistanceToKNO } from "@/services/fareService";
+import { calculateShuttleFare, getDistanceToKNO, calculateFareFromDb } from "@/services/fareService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,10 +19,6 @@ interface Schedule {
   id: string;
   departure_time: string;
   arrival_time: string;
-  price_regular: number;
-  price_executive: number;
-  price_vip: number;
-  available_seats: number;
   vehicle: {
     id: string;
     name: string;
@@ -80,7 +76,7 @@ const Shuttle = () => {
         let query = supabase
           .from("shuttle_schedules")
           .select(`
-            id, departure_time, arrival_time, price_regular, price_executive, price_vip, available_seats,
+            id, departure_time, arrival_time,
             vehicle:vehicles(id, name, image_url, layout),
             route:shuttle_routes(name, origin, destination)
           `)
@@ -122,27 +118,21 @@ const Shuttle = () => {
   const currentPrice = useMemo(() => {
     if (!selectedSchedule) return 0;
     
-    // If it's a KNO route, use rayon-based calculation
-    if (selectedSchedule.route.destination.toLowerCase().includes("kno") || 
-        selectedSchedule.route.origin.toLowerCase().includes("kno")) {
-      if (selectedPoint) {
-        // Automatically compute based on 1 seat for unit price
-        const zone = rayonZones.find(z => z.id === selectedRayonId);
-        const point = pickupPoints.find(p => p.id === selectedPointId);
-        
-        if (zone && point) {
-          const baseFare = selectedTier === 'vip' ? zone.base_fare_vip : (selectedTier === 'executive' ? zone.base_fare_executive : zone.base_fare_regular);
-          const pricePerKm = selectedTier === 'vip' ? zone.price_per_km_vip : (selectedTier === 'executive' ? zone.price_per_km_executive : zone.price_per_km_regular);
-          return (baseFare || 0) + ((point.jarak_ke_kno || 0) * (pricePerKm || 0));
-        }
-        return calculateShuttleFare(selectedRayon, selectedPoint, selectedTier, 1);
-      }
+    // Always use rayon-based calculation as dynamic fare is the source of truth
+    const zone = rayonZones.find(z => z.id === selectedRayonId);
+    const point = pickupPoints.find(p => p.id === selectedPointId);
+    
+    if (zone && point) {
+      return calculateFareFromDb(zone, point, selectedTier, 1);
     }
-
-    if (selectedTier === "vip") return selectedSchedule.price_vip;
-    if (selectedTier === "executive") return selectedSchedule.price_executive;
-    return selectedSchedule.price_regular;
-  }, [selectedSchedule, selectedTier, selectedRayon, selectedPoint, selectedIds.length]);
+    
+    // Fallback if point not selected yet but rayon is (for preview)
+    if (selectedRayon && selectedPoint) {
+        return calculateShuttleFare(selectedRayon, selectedPoint, selectedTier, 1);
+    }
+    
+    return 0;
+  }, [selectedSchedule, selectedTier, selectedRayon, selectedPoint, selectedIds.length, rayonZones, pickupPoints]);
 
     const total = selectedIds.length * currentPrice;
 
@@ -227,18 +217,21 @@ const Shuttle = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-primary">{formatCurrency(s.price_regular)}</p>
-                        <p className="text-[10px] text-muted-foreground">Mulai dari</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Harga Rute</p>
+                        <Badge variant="outline" className="text-primary font-bold">Dihitung Otomatis</Badge>
                       </div>
                     </div>
 
                     <div className="bg-muted/30 px-4 py-2 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-3">
                         <span className="flex items-center gap-1"><Bus className="w-3 h-3" /> {s.vehicle.name}</span>
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {s.available_seats} Kursi</span>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" /> 
+                          {Array.isArray(s.vehicle.layout) ? s.vehicle.layout.length : 0} Kursi
+                        </span>
                       </div>
-                      <Badge variant={s.available_seats < 5 ? "destructive" : "secondary"} className="text-[10px]">
-                        {s.available_seats < 5 ? "Hampir Penuh" : "Tersedia"}
+                      <Badge variant="secondary" className="text-[10px]">
+                        Siap Berangkat
                       </Badge>
                     </div>
 
@@ -246,35 +239,34 @@ const Shuttle = () => {
                       <div className="p-4 border-t bg-background space-y-4 animate-in slide-in-from-top-2 duration-200">
                         <p className="text-xs font-bold uppercase text-muted-foreground">Pilih Tipe Layanan</p>
                         <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { id: "regular", label: "Reguler", price: s.price_regular, icon: Bus, color: "bg-blue-500" },
-                            { id: "executive", label: "Executive", price: s.price_executive, icon: ShieldCheck, color: "bg-purple-500" },
-                            { id: "vip", label: "VIP", price: s.price_vip, icon: Star, color: "bg-amber-500" },
-                          ].map((t) => (
-                            <button
-                              key={t.id}
-                              className={cn(
-                                "flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all",
-                                selectedTier === t.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTier(t.id as ServiceTier);
-                              }}
-                            >
-                              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center mb-1", t.color)}>
-                                <t.icon className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-[10px] font-bold">{t.label}</span>
-                              <span className="text-[10px] text-primary font-bold">
-                                {formatCurrency(
-                                  (s.route.destination.toLowerCase().includes("kno") || s.route.origin.toLowerCase().includes("kno")) && selectedPoint
-                                    ? calculateShuttleFare(selectedRayon, selectedPoint, t.id as ServiceTier, 1)
-                                    : (t.id === "vip" ? s.price_vip : t.id === "executive" ? s.price_executive : s.price_regular)
-                                )}
-                              </span>
-                            </button>
-                          ))}
+                              {[
+                                { id: "regular", label: "Reguler", icon: Bus, color: "bg-blue-500" },
+                                { id: "executive", label: "Executive", icon: ShieldCheck, color: "bg-purple-500" },
+                                { id: "vip", label: "VIP", icon: Star, color: "bg-amber-500" },
+                              ].map((t) => (
+                                <button
+                                  key={t.id}
+                                  className={cn(
+                                    "flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all",
+                                    selectedTier === t.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTier(t.id as ServiceTier);
+                                  }}
+                                >
+                                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center mb-1", t.color)}>
+                                    <t.icon className="w-4 h-4 text-white" />
+                                  </div>
+                                  <span className="text-[10px] font-bold">{t.label}</span>
+                                  <span className="text-[10px] text-primary font-bold">
+                                    {selectedPoint
+                                      ? formatCurrency(calculateShuttleFare(selectedRayon, selectedPoint, t.id as ServiceTier, 1))
+                                      : "Pilih Titik"
+                                    }
+                                  </span>
+                                </button>
+                              ))}
                         </div>
 
                         {/* Rayon & Pickup Point Selection */}

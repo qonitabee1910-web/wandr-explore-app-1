@@ -1,4 +1,34 @@
 import { RAYON_DATA } from '../data/rayonPoints';
+import { RayonZone, PickupPoint } from '@/types/shuttle-booking';
+
+/**
+ * Calculates fare using database objects (Recommended)
+ * Formula: (Base Fare + (Distance in KM * Price Per KM)) * Number of Seats
+ */
+export function calculateFareFromDb(
+  zone: RayonZone,
+  point: PickupPoint,
+  serviceTier: 'regular' | 'executive' | 'vip',
+  seatCount: number = 1
+): number {
+  if (!zone || !point) return 0;
+
+  const baseFare = serviceTier === 'vip' 
+    ? zone.base_fare_vip 
+    : (serviceTier === 'executive' ? zone.base_fare_executive : zone.base_fare_regular);
+    
+  const pricePerKm = serviceTier === 'vip' 
+    ? zone.price_per_km_vip 
+    : (serviceTier === 'executive' ? zone.price_per_km_executive : zone.price_per_km_regular);
+
+  // Use the pre-calculated distance from database (Source of Truth)
+  const distanceKm = point.jarak_ke_kno || 0;
+  
+  const totalFare = ((baseFare || 0) + (distanceKm * (pricePerKm || 0))) * seatCount;
+  
+  // Round to nearest 500 for business logic consistency
+  return Math.round(totalFare / 500) * 500;
+}
 
 export interface FareRule {
   serviceTier: 'regular' | 'executive' | 'vip';
