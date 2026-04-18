@@ -1,60 +1,65 @@
 
-## Rencana: Seat Layout Editor dengan Upload Denah Mobil
+## Review & Refinement: Seat Layout Editor + Upload
 
-### Status Saat Ini
-- `/admin/seat-editor` sudah ada, sudah multi-vehicle (pakai `?vehicle=ID`), drag & drop kursi sudah jalan
-- Tabel `vehicles` sudah punya kolom `image_url` (text), tapi belum ada UI upload — masih input URL manual di `AdminVehicles`
-- `SeatEditor.tsx` masih hardcode pakai `hiace-layout.png` import statis, belum baca `image_url` dari vehicle
-- Belum ada storage bucket di Supabase
+### Status: Working ✅
+- Storage bucket `vehicle-layouts` exists & is public
+- RLS policies untuk admin upload/delete sudah ada
+- Upload UI di `SeatLayoutEditor` jalan
+- `Shuttle.tsx` user fetch vehicle aktif & tampilkan denah + layout
 
-### Yang Akan Dibuat/Diubah
+### Issues Ditemukan
 
-**1. Storage bucket `vehicle-layouts` (PUBLIC)**
-- Migration: buat bucket + RLS policy (admin bisa upload/delete, public bisa baca)
-- File path: `{vehicle-id}/{timestamp}.{ext}`
+**1. Stale image cache setelah upload ulang** (medium)
+`upsert: true` dengan path baru `{timestamp}.ext` artinya file lama tetap nyangkut di storage (orphan). Plus URL baru selalu unique jadi cache bukan masalah, tapi storage jadi penuh sampah.
+→ **Fix**: hapus file lama sebelum upload baru (list bucket folder `{vehicleId}/`, delete semua, lalu upload).
 
-**2. `SeatEditor.tsx` — terima prop `baseImageUrl`**
-- Hapus import statis `hiace-layout.png`
-- Render `<img src={baseImageUrl}>` jika ada, fallback ke placeholder kotak abu-abu dengan teks "Belum ada denah, upload dulu"
+**2. Image aspect ratio fixed `1/2` (portrait sempit)** (high)
+`SeatEditor` & `SeatMap` pakai `aspect-[1/2]` (lebar 280, tinggi 560). Foto denah Hiace yang user upload bisa landscape atau aspect lain → image jadi kekecilan + banyak whitespace, posisi kursi tidak match.
+→ **Fix**: Ubah container ke `aspect-auto` dengan tinggi natural dari image, atau biarkan image set aspect via `onLoad` baca naturalWidth/Height. Container & kursi tetap pakai % positioning jadi otomatis fit.
 
-**3. `SeatLayoutEditor.tsx` — tambah panel upload**
-- Tombol "Upload Denah Mobil" → file input (accept image/*, max 5MB)
-- Handler: upload ke Storage → dapat public URL → update `vehicles.image_url` → refresh state
-- Tampilkan preview thumbnail kecil + tombol "Ganti gambar"
-- Validasi: hanya image, max 5MB, toast error kalau gagal
-- Kirim `image_url` vehicle ke `<SeatEditor baseImageUrl={...}>`
+**3. `HIACE_SEATS` masih dipakai sebagai initial state di `Shuttle.tsx`** (low)
+`useState(HIACE_SEATS)` membaca dari localStorage sebelum DB fetch. Ini legacy dari versi lama, bisa jadi flicker. Mending initial `[]` lalu show skeleton sampai DB load.
 
-**4. `Shuttle.tsx` (user) — pakai gambar dari vehicle aktif**
-- Fetch vehicle pertama yang `is_active=true` dari DB (atau by slug yang dipilih user nanti)
-- Pass `image_url` & `layout` ke `SeatMap`
-- Update `SeatMap.tsx` dengan prop `baseImageUrl` (sama seperti SeatEditor)
-- Fallback: kalau belum ada vehicle di DB, pakai data hardcode lama
+**4. Tidak ada loading state saat fetch vehicle di `/shuttle`** (low)
+User lihat layar kosong sebentar. Tambah skeleton/spinner.
 
-**5. `AdminVehicles.tsx` — hapus input URL manual**
-- Field "URL Gambar Denah" diganti jadi info: "Upload denah lewat editor kursi (ikon ✏️)"
-- Atau biarkan field ada tapi optional (untuk URL eksternal)
+**5. Image preview di header editor kepotong** (low)
+Thumbnail 14x14 dengan `object-contain` ok, tapi di full editor canvas, image jangan di-`object-contain` ke aspect 1:2 yg bikin gambar kecil. Sebaiknya `object-cover` atau auto-aspect.
 
-### Flow Admin
-```
-/admin/vehicles → klik ikon kursi → /admin/seat-editor?vehicle=ID
-  → klik "Upload Denah" → pilih file → otomatis tersimpan ke DB
-  → drag kursi di atas denah → klik "Simpan Layout"
-  → user buka /shuttle → lihat denah + kursi yang sudah diatur
-```
+**6. Uploading state tidak disable seluruh form** (cosmetic)
+Saat upload, user masih bisa drag kursi / klik save. Tambah visual feedback overlay.
+
+**7. Validasi MIME redundan dengan bucket** (cosmetic)
+Bucket sudah restrict ke image/png|jpeg|webp|gif. Cek client-side `file.type.startsWith("image/")` ok tapi bisa lebih informatif.
+
+**8. Tombol "Lokal" di editor admin membingungkan** (medium)
+Admin tidak butuh save lokal — itu kebutuhan dev. Untuk admin, hanya butuh "Database". Sembunyikan tombol Lokal jika `vehicleId` ada (mode admin).
+
+### Yang Akan Diubah
+
+**A. `SeatEditor.tsx` & `SeatMap.tsx`**
+- Ganti `aspect-[1/2]` → dynamic aspect berdasarkan natural image dimension (state `aspectRatio`, set di `<img onLoad>`)
+- Fallback (no image): tetap `aspect-[1/2]`
+
+**B. `SeatLayoutEditor.tsx`**
+- `handleFileSelected`: list & delete existing files di folder `{vehicleId}/` sebelum upload baru (prevent orphan)
+- Hide tombol "Lokal" saat ada `vehicleId` (admin context)
+- Disable drag & buttons saat `uploading=true` (overlay loading di canvas)
+
+**C. `Shuttle.tsx`**
+- Initial `seats` = `[]`, tambah `loading` state
+- Skeleton placeholder di canvas saat loading
+- Hapus dependency `HIACE_SEATS` dari import (pakai DEFAULT_HIACE_SEATS sebagai true fallback jika DB kosong)
+
+**D. (opsional) Cleanup `seatLayout.ts`**
+- `HIACE_SEATS` legacy export tetap, tapi `Shuttle.tsx` tidak pakai
 
 ### File yang Disentuh
-- **Migration baru**: storage bucket `vehicle-layouts` + RLS
-- **Edit**: `src/components/shuttle/SeatEditor.tsx` (terima `baseImageUrl` prop)
-- **Edit**: `src/components/shuttle/SeatMap.tsx` (terima `baseImageUrl` prop)
-- **Edit**: `src/pages/SeatLayoutEditor.tsx` (tambah upload UI + handler)
-- **Edit**: `src/pages/Shuttle.tsx` (fetch vehicle dari DB)
-- **Edit**: `src/pages/admin/AdminVehicles.tsx` (clean up field URL manual)
+- `src/components/shuttle/SeatEditor.tsx` — dynamic aspect
+- `src/components/shuttle/SeatMap.tsx` — dynamic aspect + skeleton-friendly
+- `src/pages/SeatLayoutEditor.tsx` — orphan cleanup, hide local btn, upload overlay
+- `src/pages/Shuttle.tsx` — loading state, hapus HIACE_SEATS init
+- (no DB migration needed)
 
-### Yang TIDAK Dibuat
-- Crop/resize image di client (upload as-is)
-- Multiple denah per vehicle (1 vehicle = 1 denah)
-- Vehicle picker di halaman user `/shuttle` (auto pakai vehicle aktif pertama)
-- Image optimization (Supabase Storage sudah cukup)
-
-### Hasil Akhir
-Admin bisa upload foto denah mobil apapun (Hiace, Elf, Bus) → drag kursi sesuai foto → user lihat denah persis sama dengan posisi kursi yang admin atur, semua tersimpan di database per-vehicle.
+### Hasil
+Upload denah dengan aspect rasio apa pun tampil pas, posisi kursi akurat, tidak ada orphan files di storage, UX admin lebih bersih (tidak ada tombol membingungkan), user lihat skeleton sebentar bukan flicker layout lama.
