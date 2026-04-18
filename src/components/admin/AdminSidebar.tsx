@@ -15,6 +15,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard, end: true },
   { title: "Bookings", url: "/admin/bookings", icon: Calendar, end: false },
+  { title: "Schedules", url: "/admin/schedules", icon: Clock, end: false },
   { title: "Promos", url: "/admin/promos", icon: Tag, end: false },
   { title: "Vehicles", url: "/admin/vehicles", icon: Truck, end: false },
   { title: "Rayons", url: "/admin/rayon-management", icon: MapPin, end: false },

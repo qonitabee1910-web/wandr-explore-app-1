@@ -13,6 +13,8 @@ interface SeatEditorProps {
   onMoveDriver?: (x: number, y: number) => void;
   baseImageUrl?: string | null;
   disabled?: boolean;
+  showGrid?: boolean;
+  gridSize?: number;
 }
 
 const SeatEditor = ({ 
@@ -24,7 +26,9 @@ const SeatEditor = ({
   driverPos = { x: 50, y: 8 }, 
   onMoveDriver, 
   baseImageUrl, 
-  disabled 
+  disabled,
+  showGrid = false,
+  gridSize = 5
 }: SeatEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -38,12 +42,21 @@ const SeatEditor = ({
   const hasImage = Boolean(baseImageUrl);
   const ready = !hasImage || (imgLoaded && aspectRatio);
 
+  const snap = (val: number) => {
+    if (!showGrid || !gridSize) return val;
+    return Math.round(val / gridSize) * gridSize;
+  };
+
   const updateFromPointer = (id: string, clientX: number, clientY: number) => {
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
+    let x = ((clientX - rect.left) / rect.width) * 100;
+    let y = ((clientY - rect.top) / rect.height) * 100;
+    
+    x = snap(x);
+    y = snap(y);
+
     const clampedX = Math.max(0, Math.min(100, x));
     const clampedY = Math.max(0, Math.min(100, y));
     setLivePos({ x: clampedX, y: clampedY });
@@ -58,8 +71,11 @@ const SeatEditor = ({
     const seat = seats.find(s => s.id === resizingId);
     if (!seat) return;
 
-    const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
-    const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+    let mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+    let mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    mouseX = snap(mouseX);
+    mouseY = snap(mouseY);
 
     const currentW = seat.width || 11.25; // Default ~36px
     const currentH = seat.height || (aspectRatio ? 11.25 / aspectRatio : 11.25);
@@ -70,15 +86,15 @@ const SeatEditor = ({
     let top = seat.y - currentH / 2;
     let bottom = seat.y + currentH / 2;
 
-    if (resizeDir.includes('e')) right = Math.max(left + 5, Math.min(100, mouseX));
-    if (resizeDir.includes('w')) left = Math.max(0, Math.min(right - 5, mouseX));
-    if (resizeDir.includes('s')) bottom = Math.max(top + 5, Math.min(100, mouseY));
-    if (resizeDir.includes('n')) top = Math.max(0, Math.min(bottom - 5, mouseY));
+    if (resizeDir.includes('e')) right = Math.max(left + gridSize, Math.min(100, mouseX));
+    if (resizeDir.includes('w')) left = Math.max(0, Math.min(right - gridSize, mouseX));
+    if (resizeDir.includes('s')) bottom = Math.max(top + gridSize, Math.min(100, mouseY));
+    if (resizeDir.includes('n')) top = Math.max(0, Math.min(bottom - gridSize, mouseY));
 
-    const newW = right - left;
-    const newH = bottom - top;
-    const newX = left + newW / 2;
-    const newY = top + newH / 2;
+    const newW = snap(right - left);
+    const newH = snap(bottom - top);
+    const newX = snap(left + newW / 2);
+    const newY = snap(top + newH / 2);
 
     setLiveSize({ w: newW, h: newH });
     setLivePos({ x: newX, y: newY });
@@ -147,8 +163,12 @@ const SeatEditor = ({
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    let x = ((e.clientX - rect.left) / rect.width) * 100;
+    let y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    x = snap(x);
+    y = snap(y);
+
     const clampedX = Math.max(0, Math.min(100, x));
     const clampedY = Math.max(0, Math.min(100, y));
     setLivePos({ x: clampedX, y: clampedY });
@@ -179,7 +199,22 @@ const SeatEditor = ({
         hasImage && !ready && "min-h-[400px]",
         disabled && "opacity-60 pointer-events-none",
       )}
+      onClick={() => onSelect(null)}
     >
+      {/* Grid Overlay */}
+      {showGrid && ready && (
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            {Array.from({ length: Math.floor(100 / gridSize) + 1 }).map((_, i) => (
+              <line key={`v-${i}`} x1={`${i * gridSize}%`} y1="0" x2={`${i * gridSize}%`} y2="100%" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.1" className="text-foreground" />
+            ))}
+            {Array.from({ length: Math.floor(100 / gridSize) + 1 }).map((_, i) => (
+              <line key={`h-${i}`} x1="0" y1={`${i * gridSize}%`} x2="100%" y2={`${i * gridSize}%`} stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.1" className="text-foreground" />
+            ))}
+          </svg>
+        </div>
+      )}
+
       {hasImage ? (
         <img
           src={baseImageUrl!}

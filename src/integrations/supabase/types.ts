@@ -164,6 +164,8 @@ export type Database = {
           total_price: number
           updated_at: string
           user_id: string | null
+          rayon_id: string | null
+          pickup_point_id: string | null
         }
         Insert: {
           booking_code: string
@@ -183,6 +185,8 @@ export type Database = {
           total_price: number
           updated_at?: string
           user_id?: string | null
+          rayon_id?: string | null
+          pickup_point_id?: string | null
         }
         Update: {
           booking_code?: string
@@ -202,8 +206,24 @@ export type Database = {
           total_price?: number
           updated_at?: string
           user_id?: string | null
+          rayon_id?: string | null
+          pickup_point_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shuttle_bookings_rayon_id_fkey"
+            columns: ["rayon_id"]
+            isOneToOne: false
+            referencedRelation: "rayon_zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shuttle_bookings_pickup_point_id_fkey"
+            columns: ["pickup_point_id"]
+            isOneToOne: false
+            referencedRelation: "pickup_points"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shuttle_bookings_schedule_id_fkey"
             columns: ["schedule_id"]
@@ -338,6 +358,107 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      rayon_zones: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          base_fare_regular: number | null
+          base_fare_executive: number | null
+          base_fare_vip: number | null
+          price_per_km_regular: number | null
+          price_per_km_executive: number | null
+          price_per_km_vip: number | null
+          center_lat: number | null
+          center_lng: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          base_fare_regular?: number | null
+          base_fare_executive?: number | null
+          base_fare_vip?: number | null
+          price_per_km_regular?: number | null
+          price_per_km_executive?: number | null
+          price_per_km_vip?: number | null
+          center_lat?: number | null
+          center_lng?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          base_fare_regular?: number | null
+          base_fare_executive?: number | null
+          base_fare_vip?: number | null
+          price_per_km_regular?: number | null
+          price_per_km_executive?: number | null
+          price_per_km_vip?: number | null
+          center_lat?: number | null
+          center_lng?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pickup_points: {
+        Row: {
+          id: string
+          rayon_id: string | null
+          place_name: string
+          time_wib: string
+          distance_from_previous_mtr: number
+          cumulative_distance_mtr: number
+          latitude: number
+          longitude: number
+          jarak_ke_kno: number
+          is_active: boolean | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          rayon_id?: string | null
+          place_name: string
+          time_wib: string
+          distance_from_previous_mtr?: number
+          cumulative_distance_mtr?: number
+          latitude: number
+          longitude: number
+          jarak_ke_kno: number
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          rayon_id?: string | null
+          place_name?: string
+          time_wib?: string
+          distance_from_previous_mtr?: number
+          cumulative_distance_mtr?: number
+          latitude?: number
+          longitude?: number
+          jarak_ke_kno?: number
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pickup_points_rayon_id_fkey"
+            columns: ["rayon_id"]
+            isOneToOne: false
+            referencedRelation: "rayon_zones"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       user_roles: {
         Row: {

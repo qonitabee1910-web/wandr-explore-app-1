@@ -53,10 +53,25 @@ const Shuttle = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [selectedTier, setSelectedTier] = useState<ServiceTier>("regular");
   const [selectedRayon, setSelectedRayon] = useState<string>("RAYON-A");
+  const [selectedRayonId, setSelectedRayonId] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<string>("");
+  const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<"schedule" | "seats">("schedule");
+
+  const [rayonZones, setRayonZones] = useState<any[]>([]);
+  const [pickupPoints, setPickupPoints] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchRayonData = async () => {
+      const { data: zones } = await supabase.from('rayon_zones').select('*');
+      const { data: points } = await supabase.from('pickup_points').select('*').eq('is_active', true);
+      if (zones) setRayonZones(zones);
+      if (points) setPickupPoints(points);
+    };
+    fetchRayonData();
+  }, []);
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -112,6 +127,14 @@ const Shuttle = () => {
         selectedSchedule.route.origin.toLowerCase().includes("kno")) {
       if (selectedPoint) {
         // Automatically compute based on 1 seat for unit price
+        const zone = rayonZones.find(z => z.id === selectedRayonId);
+        const point = pickupPoints.find(p => p.id === selectedPointId);
+        
+        if (zone && point) {
+          const baseFare = selectedTier === 'vip' ? zone.base_fare_vip : (selectedTier === 'executive' ? zone.base_fare_executive : zone.base_fare_regular);
+          const pricePerKm = selectedTier === 'vip' ? zone.price_per_km_vip : (selectedTier === 'executive' ? zone.price_per_km_executive : zone.price_per_km_regular);
+          return (baseFare || 0) + ((point.jarak_ke_kno || 0) * (pricePerKm || 0));
+        }
         return calculateShuttleFare(selectedRayon, selectedPoint, selectedTier, 1);
       }
     }
@@ -136,7 +159,9 @@ const Shuttle = () => {
       schedule_id: selectedSchedule.id,
       tier: selectedTier,
       rayon: selectedRayon,
+      rayon_id: selectedRayonId || "",
       pickup: selectedPoint,
+      pickup_id: selectedPointId || "",
       name: `${selectedSchedule.route.origin} → ${selectedSchedule.route.destination}`,
       room: `${selectedTier.toUpperCase()} - Kursi ${seats}${selectedPoint ? ` (${selectedPoint})` : ""}`,
       price: String(total),
@@ -260,13 +285,15 @@ const Shuttle = () => {
                               <p className="text-[11px] font-bold uppercase text-muted-foreground">Pilih Lokasi Penjemputan (Rayon)</p>
                             </div>
                             <div className="grid grid-cols-4 gap-1.5">
-                              {RAYON_DATA.map(r => (
+                              {rayonZones.map(r => (
                                 <button
-                                  key={r.name}
+                                  key={r.id}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedRayon(r.name);
+                                    setSelectedRayonId(r.id);
                                     setSelectedPoint(""); // Reset point when rayon changes
+                                    setSelectedPointId(null);
                                   }}
                                   className={cn(
                                     "px-2 py-1.5 rounded-md text-[10px] font-bold border transition-all",
@@ -282,19 +309,25 @@ const Shuttle = () => {
                               value={selectedPoint}
                               onChange={(e) => {
                                 e.stopPropagation();
+                                const point = pickupPoints.find(p => p.place_name === e.target.value);
                                 setSelectedPoint(e.target.value);
+                                setSelectedPointId(point?.id || null);
                               }}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <option value="">-- Pilih Titik Penjemputan --</option>
-                              {RAYON_DATA.find(r => r.name === selectedRayon)?.points.filter(p => p.place !== 'KNO' && p.place !== 'Kualanamu' && p.place !== 'Tol KNO').map(p => (
-                                <option key={p.place} value={p.place}>{p.place} ({p.time})</option>
-                              ))}
+                              {pickupPoints
+                                .filter(p => p.rayon_id === selectedRayonId && !p.place_name.toLowerCase().includes('kno') && !p.place_name.toLowerCase().includes('kualanamu'))
+                                .map(p => (
+                                  <option key={p.id} value={p.place_name}>{p.place_name} ({p.time_wib.slice(0, 5)})</option>
+                                ))}
                             </select>
                             {selectedPoint && (
                               <div className="flex items-center justify-between px-1">
                                 <span className="text-[10px] text-muted-foreground">Jarak ke KNO:</span>
-                                <span className="text-[10px] font-bold text-primary">{(getDistanceToKNO(selectedRayon, selectedPoint) / 1000).toFixed(1)} km</span>
+                                <span className="text-[10px] font-bold text-primary">
+                                  {pickupPoints.find(p => p.id === selectedPointId)?.jarak_ke_kno || 0} km
+                                </span>
                               </div>
                             )}
                           </div>

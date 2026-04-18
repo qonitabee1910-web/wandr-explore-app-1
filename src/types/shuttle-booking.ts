@@ -55,6 +55,37 @@ export interface Vehicle {
   created_at: string;
 }
 
+export interface RayonZone {
+  id: string;
+  name: string;
+  description?: string;
+  base_fare_regular: number;
+  base_fare_executive: number;
+  base_fare_vip: number;
+  price_per_km_regular: number;
+  price_per_km_executive: number;
+  price_per_km_vip: number;
+  center_lat?: number;
+  center_lng?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PickupPoint {
+  id: string;
+  rayon_id: string;
+  place_name: string;
+  time_wib: string;
+  distance_from_previous_mtr: number;
+  cumulative_distance_mtr: number;
+  latitude?: number;
+  longitude?: number;
+  jarak_ke_kno: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ShuttleBooking {
   id: string;
   booking_code: string;

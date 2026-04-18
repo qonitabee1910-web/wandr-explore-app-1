@@ -57,10 +57,26 @@ const Booking = () => {
           total_price: price,
           booking_code: bookingCode,
           status: "confirmed",
-          payment_status: "paid"
+          payment_status: "paid",
+          rayon_id: params.get("rayon_id") || null,
+          pickup_point_id: params.get("pickup_id") || null
         });
 
         if (error) throw error;
+
+        // Update available seats in schedule
+        const { data: schedule } = await supabase
+          .from("shuttle_schedules")
+          .select("available_seats")
+          .eq("id", scheduleId)
+          .single();
+
+        if (schedule) {
+          await supabase
+            .from("shuttle_schedules")
+            .update({ available_seats: Math.max(0, schedule.available_seats - seats.length) })
+            .eq("id", scheduleId);
+        }
         
         // Simuasi Notifikasi Email
         toast({

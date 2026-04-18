@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
-import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud, Upload, Image as ImageIcon, Info, Car, Undo2, Redo2 } from "lucide-react";
+import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud, Upload, Image as ImageIcon, Info, Car, Undo2, Redo2, Grid3X3 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SeatEditor from "@/components/shuttle/SeatEditor";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -57,6 +58,8 @@ const SeatLayoutEditor = () => {
   const [showExport, setShowExport] = useState(false);
   const [vehicleName, setVehicleName] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [showGrid, setShowGrid] = useState(true);
+  const [gridSize, setGridSize] = useState(2.5);
   const [savingDb, setSavingDb] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -351,6 +354,22 @@ const SeatLayoutEditor = () => {
           <Button size="sm" variant="outline" onClick={() => setShowExport(true)}>
             <Code className="w-4 h-4" /> Export
           </Button>
+          <div className="flex items-center gap-2 ml-auto bg-muted/50 px-3 py-1 rounded-md border">
+            <Grid3X3 className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs font-medium">Grid</span>
+            <Switch checked={showGrid} onCheckedChange={setShowGrid} />
+            {showGrid && (
+              <Input 
+                type="number" 
+                step="0.5" 
+                min="1" 
+                max="20" 
+                value={gridSize} 
+                onChange={(e) => setGridSize(Number(e.target.value))}
+                className="w-16 h-7 text-[10px]"
+              />
+            )}
+          </div>
         </div>
 
         {!vehicleId && (
@@ -430,6 +449,8 @@ const SeatLayoutEditor = () => {
                   onMoveDriver={handleMoveDriver}
                   baseImageUrl={imageUrl}
                   disabled={uploading}
+                  showGrid={showGrid}
+                  gridSize={gridSize}
                 />
               {uploading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm rounded-2xl z-30">

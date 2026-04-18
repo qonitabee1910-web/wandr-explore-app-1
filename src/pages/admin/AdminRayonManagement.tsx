@@ -5,78 +5,174 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RAYON_DATA, RayonZone, RayonPoint } from "@/data/rayonPoints";
-import { FARE_RULES, calculateShuttleFare, getDistanceToKNO } from "@/services/fareService";
 import { formatCurrency } from "@/data/dummyData";
-import { MapPin, Clock, Navigation, DollarSign, Plus, Edit2, Trash2, BarChart, PieChart, TrendingUp, Save, X } from "lucide-react";
+import { MapPin, Clock, Navigation, DollarSign, Plus, Edit2, Trash2, BarChart, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { RayonZone, PickupPoint } from "@/types/shuttle-booking";
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'];
 
 const AdminRayonManagement = () => {
-  const [selectedRayon, setSelectedRayon] = useState<string>("RAYON-A");
-  const [rayonData, setRayonData] = useState<RayonZone[]>(RAYON_DATA);
+  const [selectedRayonId, setSelectedRayonId] = useState<string | null>(null);
+  const [rayonZones, setRayonZones] = useState<RayonZone[]>([]);
+  const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([]);
   const [revenueStats, setRevenueStats] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // CRUD State
   const [isRayonDialogOpen, setIsRayonDialogOpen] = useState(false);
   const [isPointDialogOpen, setIsPointDialogOpen] = useState(false);
   const [isFareDialogOpen, setIsFareDialogOpen] = useState(false);
-  const [editingRayon, setEditingRayon] = useState<any>(null);
-  const [editingPoint, setEditingPoint] = useState<any>(null);
-  const [editingFare, setEditingFare] = useState<any>(null);
-  const [seatCount, setSeatCount] = useState(1);
+  const [editingRayon, setEditingRayon] = useState<RayonZone | null>(null);
+  const [editingPoint, setEditingPoint] = useState<PickupPoint | null>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
-      // In a real app, fetch from Supabase
-      // const { data: zones } = await supabase.from('rayon_zones').select('*');
-      // const { data: points } = await supabase.from('pickup_points').select('*');
+      const { data: zones, error: zonesError } = await supabase
+        .from('rayon_zones')
+        .select('*')
+        .order('name');
       
-      const mockStats = RAYON_DATA.map((r, i) => ({
-        name: r.name,
-        bookings: Math.floor(Math.random() * 50) + 10,
-        revenue: (Math.floor(Math.random() * 50) + 10) * 150000,
-        color: COLORS[i % COLORS.length]
-      }));
-      setRevenueStats(mockStats);
+      if (zonesError) throw zonesError;
+      setRayonZones((zones as RayonZone[]) || []);
+      
+      if (zones && zones.length > 0 && !selectedRayonId) {
+        setSelectedRayonId(zones[0].id);
+      }
+
+      const { data: points, error: pointsError } = await supabase
+        .from('pickup_points')
+        .select('*')
+        .order('time_wib');
+      
+      if (pointsError) throw pointsError;
+      setPickupPoints((points as PickupPoint[]) || []);
+      
+      // Fetch real revenue stats from bookings
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('shuttle_bookings')
+        .select('total_price, rayon_id');
+      
+      if (bookingsError) throw bookingsError;
+
+      const stats = (zones || []).map((z, i) => {
+        const rayonBookings = (bookings || []).filter(b => b.rayon_id === z.id);
+        return {
+          name: z.name,
+          id: z.id,
+          bookings: rayonBookings.length,
+          revenue: rayonBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0),
+          color: COLORS[i % COLORS.length]
+        };
+      });
+      
+      setRevenueStats(stats);
     } catch (error) {
       console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
+      toast({ title: "Error", description: "Failed to fetch data from database.", variant: "destructive" });
     }
   };
 
-  const handleSaveRayon = () => {
-    toast({ title: editingRayon?.id ? "Rayon updated" : "Rayon created", description: "Changes saved to database." });
-    setIsRayonDialogOpen(false);
-    setEditingRayon(null);
+  const handleSaveRayon = async (formData: any) => {
+    try {
+      if (editingRayon?.id) {
+        const { error } = await supabase
+          .from('rayon_zones')
+          .update(formData)
+          .eq('id', editingRayon.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('rayon_zones')
+          .insert([formData]);
+        if (error) throw error;
+      }
+      
+      toast({ title: editingRayon?.id ? "Rayon updated" : "Rayon created", description: "Changes saved to database." });
+      setIsRayonDialogOpen(false);
+      setEditingRayon(null);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleSavePoint = () => {
-    toast({ title: editingPoint?.id ? "Point updated" : "Point created", description: "Changes saved to database." });
-    setIsPointDialogOpen(false);
-    setEditingPoint(null);
+  const handleSavePoint = async (formData: any) => {
+    try {
+      if (editingPoint?.id) {
+        const { error } = await supabase
+          .from('pickup_points')
+          .update(formData)
+          .eq('id', editingPoint.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('pickup_points')
+          .insert([{ ...formData, rayon_id: selectedRayonId }]);
+        if (error) throw error;
+      }
+      
+      toast({ title: editingPoint?.id ? "Point updated" : "Point created", description: "Changes saved to database." });
+      setIsPointDialogOpen(false);
+      setEditingPoint(null);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleSaveFare = () => {
-    toast({ title: "Pricing updated", description: "Pricing rules have been updated globally." });
-    setIsFareDialogOpen(false);
-    setEditingFare(null);
+  const handleDeletePoint = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this pickup point?")) return;
+    try {
+      const { error } = await supabase.from('pickup_points').delete().eq('id', id);
+      if (error) throw error;
+      toast({ title: "Deleted", description: "Pickup point removed successfully." });
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
-  const currentRayon = rayonData.find(r => r.name === selectedRayon);
-  const currentFareRules = FARE_RULES[selectedRayon] || [];
+  const handleDeleteRayon = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this Rayon? All associated pickup points will also be removed if there is no restriction.")) return;
+    try {
+      const { error } = await supabase.from('rayon_zones').delete().eq('id', id);
+      if (error) throw error;
+      
+      toast({ title: "Deleted", description: "Rayon zone removed successfully." });
+      if (selectedRayonId === id) setSelectedRayonId(null);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleSaveFare = async (formData: any) => {
+    try {
+      const { error } = await supabase
+        .from('rayon_zones')
+        .update(formData)
+        .eq('id', selectedRayonId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Pricing updated", description: "Pricing rules have been updated globally." });
+      setIsFareDialogOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const currentRayon = rayonZones.find(r => r.id === selectedRayonId);
+  const currentPoints = pickupPoints.filter(p => p.rayon_id === selectedRayonId);
 
   const totalRevenue = revenueStats.reduce((sum, s) => sum + s.revenue, 0);
   const totalBookings = revenueStats.reduce((sum, s) => sum + s.bookings, 0);
@@ -89,32 +185,16 @@ const AdminRayonManagement = () => {
             <h1 className="text-2xl font-bold tracking-tight">Rayon & Route Management</h1>
             <p className="text-sm opacity-80">Manage pickup points, distances, and fare calculations</p>
           </div>
-          <Button variant="secondary" className="bg-white text-primary hover:bg-white/90" onClick={() => setIsRayonDialogOpen(true)}>
+          <Button variant="secondary" className="bg-white text-primary hover:bg-white/90" onClick={() => {
+            setEditingRayon(null);
+            setIsRayonDialogOpen(true);
+          }}>
             <Plus className="w-4 h-4 mr-2" /> Add New Rayon
           </Button>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center gap-4 bg-muted/50 p-4 rounded-xl border">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          <div className="flex-1">
-            <p className="text-xs font-bold uppercase text-muted-foreground">Real-time Fare Preview</p>
-            <p className="text-sm">Calculate fares instantly by adjusting seats</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="seats" className="text-sm font-bold">Number of Seats:</Label>
-            <Input 
-              id="seats" 
-              type="number" 
-              min="1" 
-              value={seatCount} 
-              onChange={(e) => setSeatCount(parseInt(e.target.value) || 1)}
-              className="w-20 h-9"
-            />
-          </div>
-        </div>
-
         <Tabs defaultValue="management" className="space-y-6">
           <TabsList className="bg-muted p-1">
             <TabsTrigger value="management" className="data-[state=active]:bg-background">Route Mapping</TabsTrigger>
@@ -131,21 +211,51 @@ const AdminRayonManagement = () => {
                   </CardHeader>
                   <CardContent className="p-2">
                     <div className="flex flex-col gap-1">
-                      {rayonData.map(r => (
-                        <button
-                          key={r.name}
-                          onClick={() => setSelectedRayon(r.name)}
-                          className={`w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                            selectedRayon === r.name 
+                      {rayonZones.map(r => (
+                        <div
+                          key={r.id}
+                          className={`group relative flex items-center w-full rounded-lg transition-all ${
+                            selectedRayonId === r.id 
                               ? "bg-primary text-primary-foreground shadow-md" 
                               : "hover:bg-muted text-muted-foreground"
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span>{r.name}</span>
-                            <Navigation className={`w-3 h-3 ${selectedRayon === r.name ? "opacity-100" : "opacity-0"}`} />
+                          <button
+                            onClick={() => setSelectedRayonId(r.id)}
+                            className="flex-1 text-left px-4 py-3 text-sm font-semibold"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{r.name}</span>
+                              <Navigation className={`w-3 h-3 ${selectedRayonId === r.id ? "opacity-100" : "opacity-0"}`} />
+                            </div>
+                          </button>
+                          
+                          <div className={`flex gap-1 pr-2 ${selectedRayonId === r.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className={`h-7 w-7 ${selectedRayonId === r.id ? "text-primary-foreground hover:bg-white/20" : "text-muted-foreground hover:text-primary"}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingRayon(r);
+                                setIsRayonDialogOpen(true);
+                              }}
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className={`h-7 w-7 ${selectedRayonId === r.id ? "text-primary-foreground hover:bg-white/20" : "text-muted-foreground hover:text-destructive"}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRayon(r.id);
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </div>
-                        </button>
+                        </div>
                       ))}
                     </div>
                   </CardContent>
@@ -159,19 +269,43 @@ const AdminRayonManagement = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {currentFareRules.map(rule => (
-                      <div key={rule.serviceTier} className="p-3 bg-muted/30 rounded-lg border border-border">
-                        <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{rule.serviceTier}</p>
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-sm font-bold text-foreground">{formatCurrency(rule.baseFare)}</span>
-                          <span className="text-[10px] text-muted-foreground">Base Fare</span>
+                    {currentRayon && (
+                      <>
+                        <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">REGULAR</p>
+                          <div className="flex justify-between items-baseline">
+                            <span className="text-sm font-bold text-foreground">{formatCurrency(currentRayon.base_fare_regular)}</span>
+                            <span className="text-[10px] text-muted-foreground">Base Fare</span>
+                          </div>
+                          <div className="flex justify-between items-baseline mt-1">
+                            <span className="text-sm font-bold text-primary">{formatCurrency(currentRayon.price_per_km_regular)}</span>
+                            <span className="text-[10px] text-muted-foreground">Per KM</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-baseline mt-1">
-                          <span className="text-sm font-bold text-primary">{formatCurrency(rule.pricePerKm)}</span>
-                          <span className="text-[10px] text-muted-foreground">Per KM</span>
+                        <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">EXECUTIVE</p>
+                          <div className="flex justify-between items-baseline">
+                            <span className="text-sm font-bold text-foreground">{formatCurrency(currentRayon.base_fare_executive)}</span>
+                            <span className="text-[10px] text-muted-foreground">Base Fare</span>
+                          </div>
+                          <div className="flex justify-between items-baseline mt-1">
+                            <span className="text-sm font-bold text-primary">{formatCurrency(currentRayon.price_per_km_executive)}</span>
+                            <span className="text-[10px] text-muted-foreground">Per KM</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                        <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                          <p className="text-xs font-bold uppercase text-muted-foreground mb-1">VIP</p>
+                          <div className="flex justify-between items-baseline">
+                            <span className="text-sm font-bold text-foreground">{formatCurrency(currentRayon.base_fare_vip)}</span>
+                            <span className="text-[10px] text-muted-foreground">Base Fare</span>
+                          </div>
+                          <div className="flex justify-between items-baseline mt-1">
+                            <span className="text-sm font-bold text-primary">{formatCurrency(currentRayon.price_per_km_vip)}</span>
+                            <span className="text-[10px] text-muted-foreground">Per KM</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                     <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setIsFareDialogOpen(true)}>
                       <Edit2 className="w-3 h-3 mr-1" /> Edit Pricing
                     </Button>
@@ -184,8 +318,8 @@ const AdminRayonManagement = () => {
                 <Card className="border-none shadow-xl">
                   <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
                     <div>
-                      <CardTitle className="text-xl">Pickup Points: {selectedRayon}</CardTitle>
-                      <p className="text-sm text-muted-foreground">Total {currentRayon?.points.length} points in this route</p>
+                      <CardTitle className="text-xl">Pickup Points: {currentRayon?.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">Total {currentPoints.length} points in this route</p>
                     </div>
                     <Button size="sm" onClick={() => setIsPointDialogOpen(true)}>
                       <Plus className="w-4 h-4 mr-2" /> Add Point
@@ -200,40 +334,28 @@ const AdminRayonManagement = () => {
                           <TableHead>Time (WIB)</TableHead>
                           <TableHead>Dist (Mtr)</TableHead>
                           <TableHead>Total to KNO</TableHead>
-                          <TableHead className="text-right">Total Fare (Reg)</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {currentRayon?.points.map((p, idx) => {
-                          const distToKNO = getDistanceToKNO(selectedRayon, p.place);
-                          const regFare = calculateShuttleFare(selectedRayon, p.place, 'regular', seatCount);
-                          
+                        {currentPoints.map((p, idx) => {
                           return (
-                            <TableRow key={`${p.j}-${idx}`} className="hover:bg-muted/20">
-                              <TableCell className="font-mono text-xs font-bold text-muted-foreground">{p.j}</TableCell>
+                            <TableRow key={p.id} className="hover:bg-muted/20">
+                              <TableCell className="font-mono text-xs font-bold text-muted-foreground">J{idx + 1}</TableCell>
                               <TableCell className="font-semibold">
                                 <div className="flex items-center gap-2">
                                   <MapPin className="w-3 h-3 text-primary" />
-                                  {p.place}
+                                  {p.place_name}
                                 </div>
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <Clock className="w-3 h-3 text-muted-foreground" />
-                                  {p.time}
+                                  {p.time_wib}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-muted-foreground">{p.dist} m</TableCell>
-                              <TableCell className="font-bold text-primary">{(distToKNO / 1000).toFixed(1)} km</TableCell>
-                              <TableCell className="text-right font-black">
-                                <div className="flex flex-col items-end">
-                                  <span>{formatCurrency(regFare)}</span>
-                                  <span className="text-[10px] text-muted-foreground font-normal">
-                                    {seatCount} seat{seatCount > 1 ? 's' : ''}
-                                  </span>
-                                </div>
-                              </TableCell>
+                              <TableCell className="text-muted-foreground">{p.cumulative_distance_mtr || 0} m</TableCell>
+                              <TableCell className="font-bold text-primary">{p.jarak_ke_kno} km</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
                                   <Button 
@@ -247,7 +369,12 @@ const AdminRayonManagement = () => {
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleDeletePoint(p.id)}
+                                  >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </Button>
                                 </div>
@@ -264,24 +391,26 @@ const AdminRayonManagement = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="bg-primary/5 border-primary/20">
                     <CardContent className="p-6">
-                      <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Route Length</p>
+                      <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Route Points</p>
                       <h3 className="text-2xl font-black text-primary">
-                        {(currentRayon?.points.reduce((sum, p) => sum + p.dist, 0) || 0) / 1000} km
+                        {currentPoints.length} Locations
                       </h3>
                     </CardContent>
                   </Card>
                   <Card className="bg-purple-500/5 border-purple-500/20">
                     <CardContent className="p-6">
-                      <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Avg Fare</p>
+                      <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Base Price (Reg)</p>
                       <h3 className="text-2xl font-black text-purple-600">
-                        {formatCurrency(calculateShuttleFare(selectedRayon, currentRayon?.points[0].place || "", 'regular'))}
+                        {formatCurrency(currentRayon?.base_fare_regular || 0)}
                       </h3>
                     </CardContent>
                   </Card>
                   <Card className="bg-amber-500/5 border-amber-500/20">
                     <CardContent className="p-6">
-                      <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Estimated Duration</p>
-                      <h3 className="text-2xl font-black text-amber-600">~2.5 Hours</h3>
+                      <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Price / KM (Reg)</p>
+                      <h3 className="text-2xl font-black text-amber-600">
+                        {formatCurrency(currentRayon?.price_per_km_regular || 0)}
+                      </h3>
                     </CardContent>
                   </Card>
                 </div>
@@ -402,26 +531,56 @@ const AdminRayonManagement = () => {
               <DialogTitle>{editingRayon ? 'Edit Rayon' : 'Add New Rayon'}</DialogTitle>
               <DialogDescription>Configure base settings for this zone.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Rayon Name</Label>
-                <Input placeholder="e.g. RAYON-E" defaultValue={editingRayon?.name} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              handleSaveRayon({
+                name: formData.get('name'),
+                base_fare_regular: Number(formData.get('base_fare_regular')),
+                price_per_km_regular: Number(formData.get('price_per_km_regular')),
+                base_fare_executive: Number(formData.get('base_fare_executive')),
+                price_per_km_executive: Number(formData.get('price_per_km_executive')),
+                base_fare_vip: Number(formData.get('base_fare_vip')),
+                price_per_km_vip: Number(formData.get('price_per_km_vip')),
+              });
+            }}>
+              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                 <div className="space-y-2">
-                  <Label>Base Fare (Reg)</Label>
-                  <Input type="number" defaultValue={80000} />
+                  <Label>Rayon Name</Label>
+                  <Input name="name" placeholder="e.g. RAYON-E" defaultValue={editingRayon?.name} required />
                 </div>
-                <div className="space-y-2">
-                  <Label>Price/KM (Reg)</Label>
-                  <Input type="number" defaultValue={1500} />
-                </div>
+                
+                {['regular', 'executive', 'vip'].map(tier => (
+                  <div key={tier} className="space-y-3 p-4 border rounded-xl bg-muted/30">
+                    <p className="text-xs font-black uppercase text-primary">{tier} Tier Pricing</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Base Fare</Label>
+                        <Input 
+                          name={`base_fare_${tier}`} 
+                          type="number" 
+                          defaultValue={editingRayon?.[`base_fare_${tier}`] || (tier === 'regular' ? 80000 : tier === 'executive' ? 120000 : 180000)} 
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Price per KM</Label>
+                        <Input 
+                          name={`price_per_km_${tier}`} 
+                          type="number" 
+                          defaultValue={editingRayon?.[`price_per_km_${tier}`] || (tier === 'regular' ? 1500 : tier === 'executive' ? 2500 : 4000)} 
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsRayonDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveRayon}>Save Rayon</Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsRayonDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">Save Rayon</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
 
@@ -433,68 +592,99 @@ const AdminRayonManagement = () => {
                 Fare is calculated automatically: (Base + (Dist * Price/Km)) * Seats.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Location Name</Label>
-                <Input placeholder="Hotel Name / Landmark" defaultValue={editingPoint?.place} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              handleSavePoint({
+                place_name: formData.get('place_name'),
+                time_wib: formData.get('time_wib'),
+                jarak_ke_kno: Number(formData.get('jarak_ke_kno')),
+                latitude: Number(formData.get('latitude')),
+                longitude: Number(formData.get('longitude')),
+              });
+            }}>
+              <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Time (WIB)</Label>
-                  <Input type="time" defaultValue={editingPoint?.time || "06:00"} />
+                  <Label>Location Name</Label>
+                  <Input name="place_name" placeholder="Hotel Name / Landmark" defaultValue={editingPoint?.place_name} required />
                 </div>
-                <div className="space-y-2">
-                  <Label>Distance (Meters)</Label>
-                  <Input type="number" placeholder="From previous point" defaultValue={editingPoint?.dist} />
-                </div>
-              </div>
-              {editingPoint && (
-                <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-                  <p className="text-xs font-bold text-primary uppercase mb-1">Calculated Preview</p>
-                  <div className="flex justify-between text-sm">
-                    <span>Current Fare (1 Seat):</span>
-                    <span className="font-bold">{formatCurrency(calculateShuttleFare(selectedRayon, editingPoint.place, 'regular', 1))}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Time (WIB)</Label>
+                    <Input name="time_wib" type="time" defaultValue={editingPoint?.time_wib || "06:00"} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Distance to KNO (KM)</Label>
+                    <Input name="jarak_ke_kno" type="number" step="0.1" placeholder="e.g. 25.5" defaultValue={editingPoint?.jarak_ke_kno} required />
                   </div>
                 </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsPointDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSavePoint}>Save Point</Button>
-            </DialogFooter>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Latitude</Label>
+                    <Input name="latitude" type="number" step="0.000001" defaultValue={editingPoint?.latitude} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Longitude</Label>
+                    <Input name="longitude" type="number" step="0.000001" defaultValue={editingPoint?.longitude} />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsPointDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">Save Point</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
 
         <Dialog open={isFareDialogOpen} onOpenChange={setIsFareDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit Pricing Rules: {selectedRayon}</DialogTitle>
+              <DialogTitle>Edit Pricing Rules: {currentRayon?.name}</DialogTitle>
               <DialogDescription>Update pricing constants for all tiers in this rayon.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-6 py-4">
-              {['regular', 'executive', 'vip'].map(tier => {
-                const rule = currentFareRules.find(r => r.serviceTier === tier);
-                return (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              handleSaveFare({
+                base_fare_regular: Number(formData.get('base_fare_regular')),
+                price_per_km_regular: Number(formData.get('price_per_km_regular')),
+                base_fare_executive: Number(formData.get('base_fare_executive')),
+                price_per_km_executive: Number(formData.get('price_per_km_executive')),
+                base_fare_vip: Number(formData.get('base_fare_vip')),
+                price_per_km_vip: Number(formData.get('price_per_km_vip')),
+              });
+            }}>
+              <div className="space-y-6 py-4">
+                {['regular', 'executive', 'vip'].map(tier => (
                   <div key={tier} className="space-y-3 p-4 border rounded-xl bg-muted/30">
                     <p className="text-sm font-black uppercase text-primary">{tier}</p>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Base Fare</Label>
-                        <Input type="number" defaultValue={rule?.baseFare} />
+                        <Input 
+                          name={`base_fare_${tier}`} 
+                          type="number" 
+                          defaultValue={currentRayon?.[`base_fare_${tier}`]} 
+                        />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs">Price per KM</Label>
-                        <Input type="number" defaultValue={rule?.pricePerKm} />
+                        <Input 
+                          name={`price_per_km_${tier}`} 
+                          type="number" 
+                          defaultValue={currentRayon?.[`price_per_km_${tier}`]} 
+                        />
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsFareDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveFare}>Update All Tiers</Button>
-            </DialogFooter>
+                ))}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsFareDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">Update All Tiers</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

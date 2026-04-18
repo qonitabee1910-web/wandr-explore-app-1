@@ -25,6 +25,7 @@ import AdminPromos from "./pages/admin/AdminPromos";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminVehicles from "./pages/admin/AdminVehicles";
+import AdminSchedules from "./pages/admin/AdminSchedules";
 import ShuttleBooking from "./pages/ShuttleBooking";
 import ShuttleBookingHistory from "./pages/ShuttleBookingHistory";
 import AdminShuttleUsers from "./pages/admin/AdminShuttleUsers";
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="bookings" element={<AdminBookings />} />
               <Route path="promos" element={<AdminPromos />} />
               <Route path="vehicles" element={<AdminVehicles />} />
+              <Route path="schedules" element={<AdminSchedules />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="shuttle-users" element={<AdminShuttleUsers />} />
               <Route path="rayon-management" element={<AdminRayonManagement />} />
