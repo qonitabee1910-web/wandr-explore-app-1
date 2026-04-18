@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud, Upload, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud, Upload, Image as ImageIcon, Info, Car } from "lucide-react";
 import Layout from "@/components/Layout";
 import SeatEditor from "@/components/shuttle/SeatEditor";
 import { Card, CardContent } from "@/components/ui/card";
