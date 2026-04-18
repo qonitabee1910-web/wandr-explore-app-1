@@ -56,7 +56,7 @@ const SeatLayoutEditor = () => {
         setVehicleName(data.name);
         setImageUrl(data.image_url ?? null);
         const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
-        if (layout.length > 0) setSeats(layout);
+        setSeats(layout);
       }
     })();
   }, [vehicleId]);
