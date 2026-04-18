@@ -9,12 +9,14 @@ interface SeatEditorProps {
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number) => void;
   baseImageUrl?: string | null;
+  disabled?: boolean;
 }
 
-const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl }: SeatEditorProps) => {
+const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl, disabled }: SeatEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
 
   const updateFromPointer = (id: string, clientX: number, clientY: number) => {
     const el = containerRef.current;
@@ -29,6 +31,7 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl }: SeatE
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>, id: string) => {
+    if (disabled) return;
     e.preventDefault();
     (e.target as HTMLButtonElement).setPointerCapture(e.pointerId);
     setDraggingId(id);
@@ -50,15 +53,30 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl }: SeatE
     }
   };
 
+  const containerStyle = aspectRatio && baseImageUrl
+    ? { aspectRatio: `${aspectRatio}` }
+    : undefined;
+
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[280px] mx-auto aspect-[1/2] rounded-2xl overflow-hidden bg-muted/30 border touch-none"
+      style={containerStyle}
+      className={cn(
+        "relative w-full max-w-[320px] mx-auto rounded-2xl overflow-hidden bg-muted/30 border touch-none",
+        !(aspectRatio && baseImageUrl) && "aspect-[1/2]",
+        disabled && "opacity-60 pointer-events-none",
+      )}
     >
       {baseImageUrl ? (
         <img
           src={baseImageUrl}
           alt="Denah kursi kendaraan"
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              setAspectRatio(img.naturalWidth / img.naturalHeight);
+            }
+          }}
           className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />

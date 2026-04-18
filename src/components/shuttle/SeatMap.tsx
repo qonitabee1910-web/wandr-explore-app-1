@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Seat } from "@/data/seatLayout";
@@ -10,12 +11,27 @@ interface SeatMapProps {
 }
 
 const SeatMap = ({ seats, selectedIds, onToggle, baseImageUrl }: SeatMapProps) => {
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+  const containerStyle = aspectRatio && baseImageUrl ? { aspectRatio: `${aspectRatio}` } : undefined;
+
   return (
-    <div className="relative w-full max-w-[280px] mx-auto aspect-[1/2] rounded-2xl overflow-hidden bg-muted/30 border">
+    <div
+      style={containerStyle}
+      className={cn(
+        "relative w-full max-w-[320px] mx-auto rounded-2xl overflow-hidden bg-muted/30 border",
+        !(aspectRatio && baseImageUrl) && "aspect-[1/2]",
+      )}
+    >
       {baseImageUrl ? (
         <img
           src={baseImageUrl}
           alt="Denah kursi shuttle"
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              setAspectRatio(img.naturalWidth / img.naturalHeight);
+            }
+          }}
           className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />

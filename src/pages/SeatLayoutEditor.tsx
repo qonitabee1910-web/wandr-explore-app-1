@@ -80,6 +80,14 @@ const SeatLayoutEditor = () => {
       return;
     }
     setUploading(true);
+    // Cleanup orphan files in this vehicle's folder before uploading new one
+    const { data: existing } = await supabase.storage
+      .from("vehicle-layouts")
+      .list(vehicleId, { limit: 100 });
+    if (existing && existing.length > 0) {
+      const paths = existing.map((f) => `${vehicleId}/${f.name}`);
+      await supabase.storage.from("vehicle-layouts").remove(paths);
+    }
     const ext = file.name.split(".").pop() || "png";
     const path = `${vehicleId}/${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage
@@ -246,13 +254,24 @@ const SeatLayoutEditor = () => {
             <p className="text-xs text-center text-muted-foreground mb-3">
               Tahan & geser kursi untuk mengatur posisi
             </p>
-            <SeatEditor
-              seats={seats}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onMove={handleMove}
-              baseImageUrl={imageUrl}
-            />
+            <div className="relative">
+              <SeatEditor
+                seats={seats}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onMove={handleMove}
+                baseImageUrl={imageUrl}
+                disabled={uploading}
+              />
+              {uploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm rounded-2xl z-30">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs text-muted-foreground">Mengupload denah...</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -330,12 +349,14 @@ const SeatLayoutEditor = () => {
         <div className="container mx-auto px-4 py-3 max-w-xl flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">{seats.length} kursi</p>
           <div className="flex gap-2">
-            <Button onClick={handleSave} variant="outline" size="lg">
-              <Save className="w-4 h-4" /> Lokal
-            </Button>
+            {!vehicleId && (
+              <Button onClick={handleSave} variant="outline" size="lg">
+                <Save className="w-4 h-4" /> Lokal
+              </Button>
+            )}
             {vehicleId && (
-              <Button onClick={handleSaveToDb} size="lg" disabled={savingDb}>
-                <Cloud className="w-4 h-4" /> {savingDb ? "..." : "Database"}
+              <Button onClick={handleSaveToDb} size="lg" disabled={savingDb || uploading}>
+                <Cloud className="w-4 h-4" /> {savingDb ? "..." : "Simpan ke Database"}
               </Button>
             )}
           </div>

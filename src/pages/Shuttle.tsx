@@ -3,10 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Calendar, Pencil } from "lucide-react";
 import Layout from "@/components/Layout";
 import SeatMap from "@/components/shuttle/SeatMap";
-import { HIACE_SEATS, SEAT_PRICE, type Seat } from "@/data/seatLayout";
+import { SEAT_PRICE, type Seat } from "@/data/seatLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/data/dummyData";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { supabase } from "@/lib/supabase";
@@ -18,9 +19,10 @@ const Shuttle = () => {
   const navigate = useNavigate();
   const { isAdmin } = useUserAuth();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [seats, setSeats] = useState<Seat[]>(HIACE_SEATS);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [vehicleName, setVehicleName] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -35,8 +37,9 @@ const Shuttle = () => {
         setVehicleName(data.name);
         setImageUrl(data.image_url ?? null);
         const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
-        if (layout.length > 0) setSeats(layout);
+        setSeats(layout);
       }
+      setLoading(false);
     })();
   }, []);
 
@@ -110,12 +113,16 @@ const Shuttle = () => {
               Tap kursi untuk memilih
             </p>
 
-            <SeatMap
-              seats={seats}
-              selectedIds={selectedIds}
-              onToggle={toggle}
-              baseImageUrl={imageUrl}
-            />
+            {loading ? (
+              <Skeleton className="w-full max-w-[320px] mx-auto aspect-[1/2] rounded-2xl" />
+            ) : (
+              <SeatMap
+                seats={seats}
+                selectedIds={selectedIds}
+                onToggle={toggle}
+                baseImageUrl={imageUrl}
+              />
+            )}
 
             <div className="flex items-center justify-center gap-4 mt-5 text-xs">
               <div className="flex items-center gap-1.5">
