@@ -31,7 +31,7 @@ export interface ShuttleSchedule {
   updated_at: string;
   // Joined fields
   route?: ShuttleRoute;
-  vehicle?: any;
+  vehicle?: Vehicle;
 }
 
 export interface ShuttleService {
@@ -40,6 +40,17 @@ export interface ShuttleService {
   name: string;
   description: string;
   icon: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Vehicle {
+  id: string;
+  name: string;
+  plate_number?: string;
+  capacity: number;
+  layout?: any[];
+  image_url?: string;
   is_active: boolean;
   created_at: string;
 }
@@ -63,11 +74,23 @@ export interface ShuttleBooking {
   updated_at: string;
 }
 
+export interface Vehicle {
+  id: string;
+  name: string;
+  plate_number: string;
+  capacity: number;
+  layout?: any[];
+  image_url?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface ShuttleBookingSession {
-  step: 'route' | 'schedule' | 'service' | 'seats' | 'passenger' | 'confirm' | 'payment' | 'ticket';
+  step: 'route' | 'schedule' | 'service' | 'car' | 'seats' | 'passenger' | 'confirm' | 'payment' | 'ticket';
   selectedRoute?: ShuttleRoute;
   selectedSchedule?: ShuttleSchedule;
   selectedService?: ServiceType;
+  selectedCar?: Vehicle;
   selectedSeats: string[];
   passengerName: string;
   passengerPhone: string;

@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { ShuttleBookingSession, ShuttleRoute, ShuttleSchedule, ServiceType, ShuttleBooking } from '@/types/shuttle-booking';
+import { ShuttleBookingSession, ShuttleRoute, ShuttleSchedule, ServiceType, ShuttleBooking, Vehicle } from '@/types/shuttle-booking';
 
 interface ShuttleBookingContextType {
   session: ShuttleBookingSession;
   setSelectedRoute: (route: ShuttleRoute) => void;
   setSelectedSchedule: (schedule: ShuttleSchedule) => void;
   setSelectedService: (service: ServiceType) => void;
+  setSelectedCar: (car: Vehicle) => void;
   toggleSeat: (seatId: string) => void;
   setPassengerInfo: (name: string, phone: string, email?: string) => void;
   calculateTotal: () => number;
@@ -47,6 +48,15 @@ export const ShuttleBookingProvider: React.FC<{ children: React.ReactNode }> = (
     setSession((prev) => ({
       ...prev,
       selectedService: service,
+      step: 'car',
+      selectedSeats: [],
+    }));
+  }, []);
+
+  const setSelectedCar = useCallback((car: Vehicle) => {
+    setSession((prev) => ({
+      ...prev,
+      selectedCar: car,
       step: 'seats',
       selectedSeats: [],
     }));
@@ -102,6 +112,7 @@ export const ShuttleBookingProvider: React.FC<{ children: React.ReactNode }> = (
     setSelectedRoute,
     setSelectedSchedule,
     setSelectedService,
+    setSelectedCar,
     toggleSeat,
     setPassengerInfo,
     calculateTotal,
