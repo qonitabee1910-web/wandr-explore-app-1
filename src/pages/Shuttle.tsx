@@ -261,7 +261,12 @@ const Shuttle = () => {
                                   <span className="text-[10px] font-bold">{t.label}</span>
                                   <span className="text-[10px] text-primary font-bold">
                                     {selectedPoint
-                                      ? formatCurrency(calculateShuttleFare(selectedRayon, selectedPoint, t.id as ServiceTier, 1))
+                                      ? formatCurrency(calculateFareFromDb(
+                                          rayonZones.find(z => z.id === selectedRayonId)!,
+                                          pickupPoints.find(p => p.id === selectedPointId)!,
+                                          t.id as ServiceTier,
+                                          1
+                                        ))
                                       : "Pilih Titik"
                                     }
                                   </span>

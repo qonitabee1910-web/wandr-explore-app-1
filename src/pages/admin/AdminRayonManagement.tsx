@@ -55,20 +55,20 @@ const AdminRayonManagement = () => {
       if (pointsError) throw pointsError;
       setPickupPoints((points as PickupPoint[]) || []);
       
-      // Fetch real revenue stats from bookings
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('shuttle_bookings')
-        .select('total_price, rayon_id');
+      // Fetch optimized revenue summary from view
+      const { data: statsData, error: statsError } = await supabase
+        .from('rayon_revenue_summary')
+        .select('*');
       
-      if (bookingsError) throw bookingsError;
+      if (statsError) throw statsError;
 
       const stats = (zones || []).map((z, i) => {
-        const rayonBookings = (bookings || []).filter(b => b.rayon_id === z.id);
+        const rayonStat = (statsData || []).find(s => s.rayon_id === z.id);
         return {
           name: z.name,
           id: z.id,
-          bookings: rayonBookings.length,
-          revenue: rayonBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0),
+          bookings: Number(rayonStat?.booking_count) || 0,
+          revenue: Number(rayonStat?.total_revenue) || 0,
           color: COLORS[i % COLORS.length]
         };
       });
