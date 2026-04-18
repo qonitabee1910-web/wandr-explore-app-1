@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UserAuthProvider } from "@/context/UserAuthContext";
+import { ShuttleBookingProvider } from "@/context/ShuttleBookingContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -24,6 +25,7 @@ import AdminPromos from "./pages/admin/AdminPromos";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminVehicles from "./pages/admin/AdminVehicles";
+import ShuttleBooking from "./pages/ShuttleBooking";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +35,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <UserAuthProvider>
+        <ShuttleBookingProvider>
         <BrowserRouter
           future={{
             v7_startTransition: true,
@@ -45,6 +48,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/shuttle-booking" element={<ShuttleBooking />} />
 
             {/* Protected user */}
             <Route path="/shuttle" element={<ProtectedRoute><Shuttle /></ProtectedRoute>} />
@@ -71,6 +75,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </ShuttleBookingProvider>
       </UserAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
