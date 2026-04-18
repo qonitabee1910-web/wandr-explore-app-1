@@ -161,8 +161,10 @@ export default function AdminVehicles() {
                 <Textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </div>
               <div>
-                <Label>URL Gambar Denah</Label>
-                <Input value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} />
+                <Label>Denah Mobil</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload foto denah lewat editor kursi (klik ikon kursi pada baris setelah simpan).
+                </p>
               </div>
               <div className="flex items-center justify-between">
                 <Label>Aktif</Label>

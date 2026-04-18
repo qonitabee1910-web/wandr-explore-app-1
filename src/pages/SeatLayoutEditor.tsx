@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud } from "lucide-react";
+import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud, Upload, Image as ImageIcon } from "lucide-react";
 import Layout from "@/components/Layout";
 import SeatEditor from "@/components/shuttle/SeatEditor";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,7 +38,10 @@ const SeatLayoutEditor = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [vehicleName, setVehicleName] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [savingDb, setSavingDb] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load vehicle layout from DB when ?vehicle=ID is present
   useEffect(() => {
@@ -46,16 +49,61 @@ const SeatLayoutEditor = () => {
     (async () => {
       const { data } = await supabase
         .from("vehicles")
-        .select("name, layout")
+        .select("name, layout, image_url")
         .eq("id", vehicleId)
         .maybeSingle();
       if (data) {
         setVehicleName(data.name);
+        setImageUrl(data.image_url ?? null);
         const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
         if (layout.length > 0) setSeats(layout);
       }
     })();
   }, [vehicleId]);
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!vehicleId) {
+      toast({ title: "Pilih vehicle dulu", description: "Buka editor lewat /admin/vehicles", variant: "destructive" });
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "File harus gambar", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Ukuran maksimal 5MB", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${vehicleId}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("vehicle-layouts")
+      .upload(path, file, { cacheControl: "3600", upsert: true, contentType: file.type });
+    if (upErr) {
+      setUploading(false);
+      toast({ title: "Gagal upload", description: upErr.message, variant: "destructive" });
+      return;
+    }
+    const { data: pub } = supabase.storage.from("vehicle-layouts").getPublicUrl(path);
+    const publicUrl = pub.publicUrl;
+    const { error: updErr } = await supabase
+      .from("vehicles")
+      .update({ image_url: publicUrl })
+      .eq("id", vehicleId);
+    setUploading(false);
+    if (updErr) {
+      toast({ title: "Gagal menyimpan URL", description: updErr.message, variant: "destructive" });
+      return;
+    }
+    setImageUrl(publicUrl);
+    toast({ title: "Denah berhasil diupload" });
+  };
 
   const selected = useMemo(
     () => seats.find((s) => s.id === selectedId) ?? null,
@@ -161,6 +209,38 @@ const SeatLayoutEditor = () => {
           </Button>
         </div>
 
+        {vehicleId && (
+          <Card className="mb-4">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-lg border bg-muted/30 overflow-hidden flex items-center justify-center shrink-0">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt="Denah" className="w-full h-full object-contain" />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">Denah Kendaraan</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {imageUrl ? "Klik untuk ganti gambar" : "Upload foto denah mobil (max 5MB)"}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={handleUploadClick} disabled={uploading}>
+                  <Upload className="w-4 h-4" /> {uploading ? "..." : imageUrl ? "Ganti" : "Upload"}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="mb-4">
           <CardContent className="p-4">
             <p className="text-xs text-center text-muted-foreground mb-3">
@@ -171,6 +251,7 @@ const SeatLayoutEditor = () => {
               selectedId={selectedId}
               onSelect={setSelectedId}
               onMove={handleMove}
+              baseImageUrl={imageUrl}
             />
           </CardContent>
         </Card>

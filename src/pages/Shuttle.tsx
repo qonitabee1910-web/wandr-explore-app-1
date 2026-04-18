@@ -1,14 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Calendar, Pencil } from "lucide-react";
 import Layout from "@/components/Layout";
 import SeatMap from "@/components/shuttle/SeatMap";
-import { HIACE_SEATS, SEAT_PRICE } from "@/data/seatLayout";
+import { HIACE_SEATS, SEAT_PRICE, type Seat } from "@/data/seatLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/data/dummyData";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { supabase } from "@/lib/supabase";
 
 const ROUTE_NAME = "Bandara Soekarno-Hatta → Jakarta Pusat";
 const SCHEDULE = "Hari ini, 14:00 WIB";
@@ -17,6 +18,27 @@ const Shuttle = () => {
   const navigate = useNavigate();
   const { isAdmin } = useUserAuth();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [seats, setSeats] = useState<Seat[]>(HIACE_SEATS);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [vehicleName, setVehicleName] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("vehicles")
+        .select("name, layout, image_url")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setVehicleName(data.name);
+        setImageUrl(data.image_url ?? null);
+        const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
+        if (layout.length > 0) setSeats(layout);
+      }
+    })();
+  }, []);
 
   const toggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -26,10 +48,10 @@ const Shuttle = () => {
 
   const selectedLabels = useMemo(
     () =>
-      HIACE_SEATS.filter((s) => selectedIds.includes(s.id))
+      seats.filter((s) => selectedIds.includes(s.id))
         .map((s) => s.label)
         .join(", "),
-    [selectedIds],
+    [selectedIds, seats],
   );
 
   const total = selectedIds.length * SEAT_PRICE;
@@ -38,7 +60,7 @@ const Shuttle = () => {
     if (selectedIds.length === 0) return;
     const params = new URLSearchParams({
       type: "shuttle",
-      name: ROUTE_NAME,
+      name: vehicleName ? `${ROUTE_NAME} (${vehicleName})` : ROUTE_NAME,
       room: `Kursi ${selectedLabels}`,
       price: String(total),
     });
@@ -66,7 +88,6 @@ const Shuttle = () => {
       </div>
 
       <div className="container mx-auto px-4 py-5 max-w-xl pb-40">
-        {/* Route info */}
         <Card className="mb-4">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-start gap-2">
@@ -77,10 +98,12 @@ const Shuttle = () => {
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">{SCHEDULE}</p>
             </div>
+            {vehicleName && (
+              <p className="text-xs text-muted-foreground">Kendaraan: {vehicleName}</p>
+            )}
           </CardContent>
         </Card>
 
-        {/* Seat map */}
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-center text-muted-foreground mb-3">
@@ -88,12 +111,12 @@ const Shuttle = () => {
             </p>
 
             <SeatMap
-              seats={HIACE_SEATS}
+              seats={seats}
               selectedIds={selectedIds}
               onToggle={toggle}
+              baseImageUrl={imageUrl}
             />
 
-            {/* Legend */}
             <div className="flex items-center justify-center gap-4 mt-5 text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded border-2 border-primary/40 bg-background" />
@@ -112,7 +135,6 @@ const Shuttle = () => {
         </Card>
       </div>
 
-      {/* Sticky bottom summary */}
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-30 bg-background border-t shadow-lg">
         <div className="container mx-auto px-4 py-3 max-w-xl">
           <div className="flex items-center justify-between mb-2">

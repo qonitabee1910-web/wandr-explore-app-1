@@ -1,22 +1,30 @@
+import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import hiaceLayout from "@/assets/hiace-layout.png";
 import type { Seat } from "@/data/seatLayout";
 
 interface SeatMapProps {
   seats: Seat[];
   selectedIds: string[];
   onToggle: (seatId: string) => void;
+  baseImageUrl?: string | null;
 }
 
-const SeatMap = ({ seats, selectedIds, onToggle }: SeatMapProps) => {
+const SeatMap = ({ seats, selectedIds, onToggle, baseImageUrl }: SeatMapProps) => {
   return (
     <div className="relative w-full max-w-[280px] mx-auto aspect-[1/2] rounded-2xl overflow-hidden bg-muted/30 border">
-      <img
-        src={hiaceLayout}
-        alt="Denah kursi shuttle Hiace"
-        className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-        draggable={false}
-      />
+      {baseImageUrl ? (
+        <img
+          src={baseImageUrl}
+          alt="Denah kursi shuttle"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+          draggable={false}
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground p-4 text-center">
+          <ImageOff className="w-10 h-10 opacity-50" />
+          <p className="text-xs">Denah kursi belum tersedia</p>
+        </div>
+      )}
 
       {seats.map((seat) => {
         const isSelected = selectedIds.includes(seat.id);

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
+import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import hiaceLayout from "@/assets/hiace-layout.png";
 import type { Seat } from "@/data/seatLayout";
 
 interface SeatEditorProps {
@@ -8,9 +8,10 @@ interface SeatEditorProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number) => void;
+  baseImageUrl?: string | null;
 }
 
-const SeatEditor = ({ seats, selectedId, onSelect, onMove }: SeatEditorProps) => {
+const SeatEditor = ({ seats, selectedId, onSelect, onMove, baseImageUrl }: SeatEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
@@ -54,12 +55,19 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove }: SeatEditorProps) =>
       ref={containerRef}
       className="relative w-full max-w-[280px] mx-auto aspect-[1/2] rounded-2xl overflow-hidden bg-muted/30 border touch-none"
     >
-      <img
-        src={hiaceLayout}
-        alt="Denah kursi shuttle Hiace"
-        className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-        draggable={false}
-      />
+      {baseImageUrl ? (
+        <img
+          src={baseImageUrl}
+          alt="Denah kursi kendaraan"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+          draggable={false}
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground p-4 text-center">
+          <ImageOff className="w-10 h-10 opacity-50" />
+          <p className="text-xs">Belum ada denah, upload dulu di panel atas</p>
+        </div>
+      )}
 
       {draggingId && livePos && (
         <div className="absolute top-1 left-1 z-10 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded font-mono pointer-events-none">
