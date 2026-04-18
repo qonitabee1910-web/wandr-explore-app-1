@@ -97,7 +97,7 @@ VALUES ('seat-layouts', 'seat-layouts', NULL, true, 52428800, ARRAY[...])
 ### Upload Image (dari Code)
 
 ```typescript
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 const uploadImage = async (file: File) => {
   const filename = `layout-${Date.now()}.png`;

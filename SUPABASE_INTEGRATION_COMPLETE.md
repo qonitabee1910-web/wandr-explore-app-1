@@ -373,7 +373,7 @@ LIMIT 20;
 
 ### Create a New User
 ```typescript
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 const { data, error } = await supabase.auth.signUp({
   email: 'user@example.com',

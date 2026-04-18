@@ -28,6 +28,7 @@ import AdminVehicles from "./pages/admin/AdminVehicles";
 import ShuttleBooking from "./pages/ShuttleBooking";
 import ShuttleBookingHistory from "./pages/ShuttleBookingHistory";
 import AdminShuttleUsers from "./pages/admin/AdminShuttleUsers";
+import AdminRayonManagement from "./pages/admin/AdminRayonManagement";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="vehicles" element={<AdminVehicles />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="shuttle-users" element={<AdminShuttleUsers />} />
+              <Route path="rayon-management" element={<AdminRayonManagement />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
             <Route

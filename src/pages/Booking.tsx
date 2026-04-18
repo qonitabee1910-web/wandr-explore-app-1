@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Booking = () => {
@@ -36,22 +36,55 @@ const Booking = () => {
     }
 
     setSubmitting(true);
-    const { error } = await supabase.from("bookings").insert({
-      user_id: user.id,
-      booking_type: type,
-      details: { name, room, contact: { fullName, email, phone } },
-      total_price: price,
-      status: "confirmed",
-    });
+    
+    try {
+      if (type === "shuttle") {
+        const scheduleId = params.get("schedule_id");
+        const tier = params.get("tier");
+        const seatsStr = params.get("room")?.split("Kursi ")[1] || "";
+        const seats = seatsStr.split(", ").filter(Boolean);
 
-    setSubmitting(false);
+        const bookingCode = `PYU-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-    if (error) {
+        const { error } = await supabase.from("shuttle_bookings").insert({
+          user_id: user.id,
+          schedule_id: scheduleId as string,
+          service_type: tier as string,
+          passenger_name: fullName,
+          passenger_phone: phone,
+          passenger_email: email,
+          seats: seats,
+          total_price: price,
+          booking_code: bookingCode,
+          status: "confirmed",
+          payment_status: "paid"
+        });
+
+        if (error) throw error;
+        
+        // Simuasi Notifikasi Email
+        toast({
+          title: "Tiket Dikirim!",
+          description: `Tiket PDF telah dikirim ke email ${email}`,
+        });
+      } else {
+        const { error } = await supabase.from("bookings").insert({
+          user_id: user.id,
+          booking_type: type,
+          details: { name, room, contact: { fullName, email, phone } },
+          total_price: price,
+          status: "confirmed",
+        });
+
+        if (error) throw error;
+      }
+
+      setStep("confirm");
+    } catch (error: any) {
       toast({ title: "Gagal menyimpan booking", description: error.message, variant: "destructive" });
-      return;
+    } finally {
+      setSubmitting(false);
     }
-
-    setStep("confirm");
   };
 
   if (step === "confirm") {

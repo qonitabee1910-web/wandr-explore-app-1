@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { Tag, Calendar, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PromoRow {
   id: string;

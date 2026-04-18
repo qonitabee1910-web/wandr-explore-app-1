@@ -1,0 +1,39 @@
+[
+  {
+    "rayon": "RAYON-A",
+    "description": "Zona Medan Kota - Pusat Bisnis",
+    "points": [
+      { "place": "Hermes Palace", "lat": 3.5852, "lng": 98.675, "dist_to_kno_km": 24.16 },
+      { "place": "Kama Hotel", "lat": 3.591, "lng": 98.678, "dist_to_kno_km": 23.75 },
+      { "place": "Istana Maimun", "lat": 3.5752, "lng": 98.6833, "dist_to_kno_km": 23.77 },
+      { "place": "Mesjid Raya", "lat": 3.5745, "lng": 98.6865, "dist_to_kno_km": 23.46 }
+    ]
+  },
+  {
+    "rayon": "RAYON-B",
+    "description": "Zona Medan Barat - Pemukiman & Hotel",
+    "points": [
+      { "place": "Cambridge", "lat": 3.5867, "lng": 98.665, "dist_to_kno_km": 25.21 },
+      { "place": "Four Point", "lat": 3.596, "lng": 98.655, "dist_to_kno_km": 26.04 },
+      { "place": "Manhattan", "lat": 3.593, "lng": 98.625, "dist_to_kno_km": 29.28 }
+    ]
+  },
+  {
+    "rayon": "RAYON-C",
+    "description": "Zona Medan Utara - Akses Tol",
+    "points": [
+      { "place": "Adi Mulia", "lat": 3.592, "lng": 98.671, "dist_to_kno_km": 24.49 },
+      { "place": "Santika", "lat": 3.5925, "lng": 98.67, "dist_to_kno_km": 24.59 },
+      { "place": "JW Marriot", "lat": 3.5975, "lng": 98.676, "dist_to_kno_km": 23.83 }
+    ]
+  },
+  {
+    "rayon": "RAYON-D",
+    "description": "Zona Medan Selatan - Pendidikan & RS",
+    "points": [
+      { "place": "Hotel TD Pardede", "lat": 3.571, "lng": 98.662, "dist_to_kno_km": 25.99 },
+      { "place": "Rumah Sakit USU", "lat": 3.564, "lng": 98.654, "dist_to_kno_km": 27.06 },
+      { "place": "Citra Garden", "lat": 3.542, "lng": 98.643, "dist_to_kno_km": 29.17 }
+    ]
+  }
+]

@@ -7,6 +7,10 @@ export interface Seat {
   x: number;
   /** Position in % of container height */
   y: number;
+  /** Width in % of container width (default: 11.25% or ~36px of 320px) */
+  width?: number;
+  /** Height in % of container height (default depends on aspect ratio, ~36px) */
+  height?: number;
   status: SeatStatus;
 }
 
@@ -60,8 +64,13 @@ export function getStoredSeats(): Seat[] {
 
 export function exportSeatsToCode(seats: Seat[]): string {
   const lines = seats.map(
-    (s) =>
-      `  { id: "${s.id}", label: "${s.label}", x: ${Number(s.x.toFixed(2))}, y: ${Number(s.y.toFixed(2))}, status: "${s.status}" },`,
+    (s) => {
+      let line = `  { id: "${s.id}", label: "${s.label}", x: ${Number(s.x.toFixed(2))}, y: ${Number(s.y.toFixed(2))}`;
+      if (s.width) line += `, width: ${Number(s.width.toFixed(2))}`;
+      if (s.height) line += `, height: ${Number(s.height.toFixed(2))}`;
+      line += `, status: "${s.status}" },`;
+      return line;
+    }
   );
   return `export const DEFAULT_HIACE_SEATS: Seat[] = [\n${lines.join("\n")}\n];\n`;
 }

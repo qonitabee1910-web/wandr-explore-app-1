@@ -113,6 +113,232 @@ export type Database = {
         }
         Relationships: []
       }
+      shuttle_booking_seats: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          seat_label: string
+          seat_position: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          seat_label: string
+          seat_position?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          seat_label?: string
+          seat_position?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shuttle_booking_seats_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "shuttle_bookings"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      shuttle_bookings: {
+        Row: {
+          booking_code: string
+          created_at: string
+          id: string
+          notes: string | null
+          passenger_email: string | null
+          passenger_name: string
+          passenger_phone: string
+          payment_method: string | null
+          payment_status: string | null
+          qr_code: string | null
+          schedule_id: string
+          seats: string[]
+          service_type: string
+          status: string | null
+          total_price: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          booking_code: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          passenger_email?: string | null
+          passenger_name: string
+          passenger_phone: string
+          payment_method?: string | null
+          payment_status?: string | null
+          qr_code?: string | null
+          schedule_id: string
+          seats: string[]
+          service_type: string
+          status?: string | null
+          total_price: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          booking_code?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          passenger_email?: string | null
+          passenger_name?: string
+          passenger_phone?: string
+          payment_method?: string | null
+          payment_status?: string | null
+          qr_code?: string | null
+          schedule_id?: string
+          seats?: string[]
+          service_type?: string
+          status?: string | null
+          total_price?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shuttle_bookings_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "shuttle_schedules"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      shuttle_routes: {
+        Row: {
+          created_at: string
+          description: string | null
+          destination: string
+          id: string
+          is_active: boolean | null
+          name: string
+          origin: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          destination: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          origin: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          destination?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          origin?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shuttle_schedules: {
+        Row: {
+          arrival_time: string
+          available_seats: number
+          created_at: string
+          departure_time: string
+          id: string
+          is_active: boolean | null
+          price_executive: number
+          price_regular: number
+          price_vip: number
+          route_id: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          arrival_time: string
+          available_seats: number
+          created_at?: string
+          departure_time: string
+          id?: string
+          is_active?: boolean | null
+          price_executive: number
+          price_regular: number
+          price_vip: number
+          route_id: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          arrival_time?: string
+          available_seats?: number
+          created_at?: string
+          departure_time?: string
+          id?: string
+          is_active?: boolean | null
+          price_executive?: number
+          price_regular?: number
+          price_vip?: number
+          route_id?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shuttle_schedules_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shuttle_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shuttle_schedules_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      shuttle_services: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -138,6 +364,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          driver_pos: Json | null
           id: string
           image_url: string | null
           is_active: boolean
@@ -149,6 +376,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          driver_pos?: Json | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -160,6 +388,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          driver_pos?: Json | null
           id?: string
           image_url?: string | null
           is_active?: boolean

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Calendar, Tag, Armchair, Users, Settings, Truck } from "lucide-react";
+import { LayoutDashboard, Calendar, Tag, Armchair, Users, Settings, Truck, MapPin } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -17,6 +17,7 @@ const items = [
   { title: "Bookings", url: "/admin/bookings", icon: Calendar, end: false },
   { title: "Promos", url: "/admin/promos", icon: Tag, end: false },
   { title: "Vehicles", url: "/admin/vehicles", icon: Truck, end: false },
+  { title: "Rayons", url: "/admin/rayon-management", icon: MapPin, end: false },
   { title: "Seat Editor", url: "/admin/seat-editor", icon: Armchair, end: false },
   { title: "Users", url: "/admin/users", icon: Users, end: false },
   { title: "Settings", url: "/admin/settings", icon: Settings, end: false },

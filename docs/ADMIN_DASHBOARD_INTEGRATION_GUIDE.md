@@ -712,7 +712,7 @@ Every admin page should check for admin role before rendering:
 
 ```typescript
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 export const AdminPageTemplate: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);

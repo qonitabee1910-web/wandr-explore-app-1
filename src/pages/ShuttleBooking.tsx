@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useShuttleBooking } from '@/context/ShuttleBookingContext';
 import { useUserAuth } from '@/context/UserAuthContext';
 import { ShuttleRoute, ShuttleSchedule, SERVICE_DESCRIPTIONS, Vehicle } from '@/types/shuttle-booking';

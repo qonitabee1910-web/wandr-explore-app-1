@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud, Upload, Image as ImageIcon, Info, Car } from "lucide-react";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
+import { ArrowLeft, Plus, RotateCcw, Code, Save, Trash2, Copy, Cloud, Upload, Image as ImageIcon, Info, Car, Undo2, Redo2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SeatEditor from "@/components/shuttle/SeatEditor";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +26,7 @@ import {
   type Seat,
   type SeatStatus,
 } from "@/data/seatLayout";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useUserAuth } from "@/context/UserAuthContext";
 
 const SeatLayoutEditor = () => {
@@ -34,8 +35,24 @@ const SeatLayoutEditor = () => {
   const [params] = useSearchParams();
   const vehicleId = params.get("vehicle");
 
-  const [seats, setSeats] = useState<Seat[]>(() => (vehicleId ? [] : getStoredSeats()));
-  const [driverPos, setDriverPos] = useState<{ x: number; y: number }>({ x: 50, y: 8 });
+  const initialSeats = useMemo(() => (vehicleId ? [] : getStoredSeats()), [vehicleId]);
+  const initialDriverPos = { x: 50, y: 8 };
+
+  const {
+    state: editorState,
+    setState: setEditorState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    reset: resetEditor
+  } = useUndoRedo({
+    seats: initialSeats,
+    driverPos: initialDriverPos
+  });
+
+  const seats = editorState.seats;
+  const driverPos = editorState.driverPos;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [vehicleName, setVehicleName] = useState<string>("");
@@ -67,7 +84,7 @@ const SeatLayoutEditor = () => {
               setVehicleName(fallbackData.name);
               setImageUrl(fallbackData.image_url ?? null);
               const layout = Array.isArray(fallbackData.layout) ? (fallbackData.layout as unknown as Seat[]) : [];
-              setSeats(layout);
+              resetEditor({ seats: layout, driverPos: initialDriverPos });
             }
           }
           return;
@@ -77,16 +94,35 @@ const SeatLayoutEditor = () => {
           setVehicleName(data.name);
           setImageUrl(data.image_url ?? null);
           const layout = Array.isArray(data.layout) ? (data.layout as unknown as Seat[]) : [];
-          setSeats(layout);
-          if (data.driver_pos && typeof data.driver_pos === 'object') {
-            setDriverPos(data.driver_pos);
+          
+          let dPos = initialDriverPos;
+          if (data.driver_pos && typeof data.driver_pos === 'object' && !Array.isArray(data.driver_pos)) {
+            const obj = data.driver_pos as Record<string, any>;
+            if (typeof obj.x === 'number' && typeof obj.y === 'number') {
+              dPos = { x: obj.x, y: obj.y };
+            }
           }
+          
+          resetEditor({ seats: layout, driverPos: dPos });
         }
       } catch (err) {
         console.error('Error loading vehicle:', err);
       }
     })();
-  }, [vehicleId]);
+  }, [vehicleId, resetEditor]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        if (e.shiftKey) redo();
+        else undo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
@@ -149,7 +185,24 @@ const SeatLayoutEditor = () => {
   );
 
   const handleMove = (id: string, x: number, y: number) => {
-    setSeats((prev) => prev.map((s) => (s.id === id ? { ...s, x, y } : s)));
+    setEditorState((prev) => ({
+      ...prev,
+      seats: prev.seats.map((s) => (s.id === id ? { ...s, x, y } : s))
+    }));
+  };
+
+  const handleResize = (id: string, width: number, height: number, x: number, y: number) => {
+    setEditorState((prev) => ({
+      ...prev,
+      seats: prev.seats.map((s) => (s.id === id ? { ...s, width, height, x, y } : s))
+    }));
+  };
+
+  const handleMoveDriver = (x: number, y: number) => {
+    setEditorState((prev) => ({
+      ...prev,
+      driverPos: { x, y }
+    }));
   };
 
   const handleAdd = () => {
@@ -160,14 +213,17 @@ const SeatLayoutEditor = () => {
       newId = `S${n}`;
     }
     const newSeat: Seat = { id: newId, label: newId, x: 50, y: 50, status: "available" };
-    setSeats((prev) => [...prev, newSeat]);
+    setEditorState((prev) => ({
+      ...prev,
+      seats: [...prev.seats, newSeat]
+    }));
     setSelectedId(newId);
   };
 
   const handleReset = () => {
     if (vehicleId) {
       if (!confirm("Reset semua kursi? Klik Simpan ke Database setelahnya untuk menerapkan.")) return;
-      setSeats([]);
+      setEditorState({ seats: [], driverPos: initialDriverPos });
       setSelectedId(null);
       toast({
         title: "Layout direset",
@@ -177,7 +233,7 @@ const SeatLayoutEditor = () => {
     }
     if (!confirm("Reset ke layout default? Perubahan lokal akan hilang.")) return;
     clearSeatsStorage();
-    setSeats(DEFAULT_HIACE_SEATS);
+    resetEditor({ seats: DEFAULT_HIACE_SEATS, driverPos: initialDriverPos });
     setSelectedId(null);
     toast({ title: "Layout direset" });
   };
@@ -220,13 +276,19 @@ const SeatLayoutEditor = () => {
 
   const handleDelete = () => {
     if (!selected) return;
-    setSeats((prev) => prev.filter((s) => s.id !== selected.id));
+    setEditorState((prev) => ({
+      ...prev,
+      seats: prev.seats.filter((s) => s.id !== selected.id)
+    }));
     setSelectedId(null);
   };
 
   const updateSelected = (patch: Partial<Seat>) => {
     if (!selected) return;
-    setSeats((prev) => prev.map((s) => (s.id === selected.id ? { ...s, ...patch } : s)));
+    setEditorState((prev) => ({
+      ...prev,
+      seats: prev.seats.map((s) => (s.id === selected.id ? { ...s, ...patch } : s))
+    }));
   };
 
   const exportedCode = useMemo(() => exportSeatsToCode(seats), [seats]);
@@ -252,6 +314,28 @@ const SeatLayoutEditor = () => {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold tracking-tight truncate">Editor Layout Kursi</h1>
             {vehicleName && <p className="text-xs opacity-90 truncate">{vehicleName}</p>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={undo}
+              disabled={!canUndo}
+              className="bg-white/10 hover:bg-white/20 text-white"
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo2 className="w-4 h-4 mr-1" /> Undo
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={redo}
+              disabled={!canRedo}
+              className="bg-white/10 hover:bg-white/20 text-white"
+              title="Redo (Ctrl+Y)"
+            >
+              <Redo2 className="w-4 h-4 mr-1" /> Redo
+            </Button>
           </div>
         </div>
       </div>
@@ -337,15 +421,16 @@ const SeatLayoutEditor = () => {
             </p>
             <div className="relative">
               <SeatEditor
-                seats={seats}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                onMove={handleMove}
-                driverPos={driverPos}
-                onMoveDriver={setDriverPos}
-                baseImageUrl={imageUrl}
-                disabled={uploading}
-              />
+                  seats={seats}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  onMove={handleMove}
+                  onResize={handleResize}
+                  driverPos={driverPos}
+                  onMoveDriver={handleMoveDriver}
+                  baseImageUrl={imageUrl}
+                  disabled={uploading}
+                />
               {uploading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm rounded-2xl z-30">
                   <div className="flex flex-col items-center gap-2">
@@ -378,7 +463,10 @@ const SeatLayoutEditor = () => {
                       onChange={(e) => {
                         const newId = e.target.value;
                         if (!newId || seats.some((s) => s.id === newId && s.id !== selected.id)) return;
-                        setSeats((prev) => prev.map((s) => (s.id === selected.id ? { ...s, id: newId } : s)));
+                        setEditorState((prev) => ({
+                          ...prev,
+                          seats: prev.seats.map((s) => (s.id === selected.id ? { ...s, id: newId } : s))
+                        }));
                         setSelectedId(newId);
                       }}
                     />

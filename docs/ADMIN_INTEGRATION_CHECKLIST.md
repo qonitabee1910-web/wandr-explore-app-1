@@ -461,7 +461,7 @@ If you want to get something working quickly:
 ```typescript
 // src/admin/hooks/useAdminAuth.ts
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useAdminAuth() {
   const [isAdmin, setIsAdmin] = useState(false);

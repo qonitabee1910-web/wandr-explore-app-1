@@ -72,10 +72,13 @@ const SeatMap = ({ seats, selectedIds, onToggle, baseImageUrl }: SeatMapProps) =
             style={{
               left: `${seat.x}%`,
               top: `${seat.y}%`,
+              width: seat.width ? `${seat.width}%` : undefined,
+              height: seat.height ? `${seat.height}%` : undefined,
             }}
             className={cn(
               "absolute -translate-x-1/2 -translate-y-1/2",
-              "w-9 h-9 rounded-lg border-2 text-[10px] font-bold",
+              !seat.width && "w-9 h-9",
+              "rounded-lg border-2 text-[10px] font-bold",
               "flex items-center justify-center transition-all duration-150",
               "shadow-sm active:scale-90",
               isOccupied &&

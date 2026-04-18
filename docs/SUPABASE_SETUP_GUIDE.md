@@ -85,7 +85,7 @@ VALUES ('driver-documents', 'driver-documents'),
 ## Testing Connection
 
 ```typescript
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 // Test connection
 async function test() {

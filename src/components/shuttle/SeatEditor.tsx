@@ -8,17 +8,31 @@ interface SeatEditorProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number) => void;
+  onResize?: (id: string, width: number, height: number, x: number, y: number) => void;
   driverPos?: { x: number; y: number };
   onMoveDriver?: (x: number, y: number) => void;
   baseImageUrl?: string | null;
   disabled?: boolean;
 }
 
-const SeatEditor = ({ seats, selectedId, onSelect, onMove, driverPos = { x: 50, y: 8 }, onMoveDriver, baseImageUrl, disabled }: SeatEditorProps) => {
+const SeatEditor = ({ 
+  seats, 
+  selectedId, 
+  onSelect, 
+  onMove, 
+  onResize,
+  driverPos = { x: 50, y: 8 }, 
+  onMoveDriver, 
+  baseImageUrl, 
+  disabled 
+}: SeatEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const [resizeDir, setResizeDir] = useState<string | null>(null);
   const [draggingDriver, setDraggingDriver] = useState(false);
   const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
+  const [liveSize, setLiveSize] = useState<{ w: number; h: number } | null>(null);
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
   const hasImage = Boolean(baseImageUrl);
@@ -34,6 +48,41 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, driverPos = { x: 50, 
     const clampedY = Math.max(0, Math.min(100, y));
     setLivePos({ x: clampedX, y: clampedY });
     onMove(id, clampedX, clampedY);
+  };
+
+  const handleResizePointerMove = (e: PointerEvent) => {
+    if (!resizingId || !resizeDir || !onResize) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const seat = seats.find(s => s.id === resizingId);
+    if (!seat) return;
+
+    const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+    const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const currentW = seat.width || 11.25; // Default ~36px
+    const currentH = seat.height || (aspectRatio ? 11.25 / aspectRatio : 11.25);
+
+    // Calculate boundaries of the seat in %
+    let left = seat.x - currentW / 2;
+    let right = seat.x + currentW / 2;
+    let top = seat.y - currentH / 2;
+    let bottom = seat.y + currentH / 2;
+
+    if (resizeDir.includes('e')) right = Math.max(left + 5, Math.min(100, mouseX));
+    if (resizeDir.includes('w')) left = Math.max(0, Math.min(right - 5, mouseX));
+    if (resizeDir.includes('s')) bottom = Math.max(top + 5, Math.min(100, mouseY));
+    if (resizeDir.includes('n')) top = Math.max(0, Math.min(bottom - 5, mouseY));
+
+    const newW = right - left;
+    const newH = bottom - top;
+    const newX = left + newW / 2;
+    const newY = top + newH / 2;
+
+    setLiveSize({ w: newW, h: newH });
+    setLivePos({ x: newX, y: newY });
+    onResize(resizingId, newW, newH, newX, newY);
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>, id: string) => {
@@ -52,12 +101,38 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, driverPos = { x: 50, 
   const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
     setDraggingId(null);
     setDraggingDriver(false);
+    setResizingId(null);
+    setResizeDir(null);
     setLivePos(null);
+    setLiveSize(null);
     try {
       (e.target as HTMLButtonElement).releasePointerCapture(e.pointerId);
     } catch {
       /* noop */
     }
+  };
+
+  const handleResizePointerDown = (e: React.PointerEvent, id: string, dir: string) => {
+    if (disabled || !onResize) return;
+    e.stopPropagation();
+    (e.target as HTMLDivElement).setPointerCapture(e.pointerId);
+    setResizingId(id);
+    setResizeDir(dir);
+  };
+
+  const handleResizeMove = (e: React.PointerEvent) => {
+    if (!resizingId) return;
+    handleResizePointerMove(e.nativeEvent);
+  };
+
+  const handleResizeUp = (e: React.PointerEvent) => {
+    setResizingId(null);
+    setResizeDir(null);
+    setLiveSize(null);
+    setLivePos(null);
+    try {
+      (e.target as HTMLDivElement).releasePointerCapture(e.pointerId);
+    } catch { /* noop */ }
   };
 
   const handleDriverPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -133,9 +208,10 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, driverPos = { x: 50, 
         <div className="absolute inset-0 animate-pulse bg-muted/50" />
       )}
 
-      {draggingId && livePos && (
-        <div className="absolute top-1 left-1 z-10 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded font-mono pointer-events-none">
-          {livePos.x.toFixed(1)}%, {livePos.y.toFixed(1)}%
+      { (draggingId || resizingId) && livePos && (
+        <div className="absolute top-1 left-1 z-40 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded font-mono pointer-events-none flex flex-col">
+          <span>Pos: {livePos.x.toFixed(1)}%, {livePos.y.toFixed(1)}%</span>
+          {liveSize && <span>Size: {liveSize.w.toFixed(1)}% x {liveSize.h.toFixed(1)}%</span>}
         </div>
       )}
 
@@ -153,9 +229,9 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, driverPos = { x: 50, 
           className={cn(
             "absolute -translate-x-1/2 -translate-y-1/2",
             "w-9 h-9 rounded-lg border-2 flex items-center justify-center",
-            "shadow-sm transition-all duration-150 touch-none",
+            "shadow-sm transition-all duration-150 touch-none z-30",
             "cursor-grab active:cursor-grabbing",
-            draggingDriver ? "scale-125 shadow-lg z-30 bg-orange-500/80 border-orange-500" : "bg-orange-500/40 border-orange-500/60 hover:bg-orange-500/50"
+            draggingDriver ? "scale-125 shadow-lg bg-orange-500/80 border-orange-500" : "bg-orange-500/40 border-orange-500/60 hover:bg-orange-500/50"
           )}
           title="Posisi Pengemudi (Drag untuk menggeser)"
         >
@@ -166,33 +242,76 @@ const SeatEditor = ({ seats, selectedId, onSelect, onMove, driverPos = { x: 50, 
       {ready && seats.map((seat) => {
         const isSelected = selectedId === seat.id;
         const isDragging = draggingId === seat.id;
+        const isResizing = resizingId === seat.id;
         const isOccupied = seat.status === "occupied";
 
+        const width = seat.width || 11.25;
+        const height = seat.height || (aspectRatio ? 11.25 / aspectRatio : 11.25);
+
         return (
-          <button
+          <div
             key={seat.id}
-            type="button"
-            onPointerDown={(e) => handlePointerDown(e, seat.id)}
-            onPointerMove={(e) => handlePointerMove(e, seat.id)}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
             style={{
               left: `${seat.x}%`,
               top: `${seat.y}%`,
+              width: `${width}%`,
+              height: `${height}%`,
             }}
             className={cn(
               "absolute -translate-x-1/2 -translate-y-1/2",
-              "w-9 h-9 rounded-lg border-2 text-[10px] font-bold",
-              "flex items-center justify-center transition-all duration-150",
-              "shadow-sm cursor-grab active:cursor-grabbing touch-none",
-              isOccupied && !isSelected && "bg-destructive/80 border-destructive text-destructive-foreground",
-              !isOccupied && !isSelected && "bg-background border-primary/40 text-primary",
-              isSelected && "bg-primary border-primary text-primary-foreground ring-2 ring-primary/40",
-              isDragging && "scale-125 shadow-lg z-20",
+              "transition-all duration-150",
+              (isDragging || isResizing) && "z-20 scale-105 shadow-xl",
+              isSelected && "z-10"
             )}
           >
-            {seat.label}
-          </button>
+            <button
+              type="button"
+              onPointerDown={(e) => handlePointerDown(e, seat.id)}
+              onPointerMove={(e) => handlePointerMove(e, seat.id)}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              className={cn(
+                "w-full h-full rounded-lg border-2 text-[10px] font-bold",
+                "flex items-center justify-center",
+                "shadow-sm cursor-grab active:cursor-grabbing touch-none",
+                isOccupied && !isSelected && "bg-destructive/80 border-destructive text-destructive-foreground",
+                !isOccupied && !isSelected && "bg-background border-primary/40 text-primary",
+                isSelected && "bg-primary border-primary text-primary-foreground ring-2 ring-primary/40",
+              )}
+            >
+              {seat.label}
+            </button>
+
+            {/* Resizing Handles */}
+            {isSelected && onResize && (
+              <>
+                <div 
+                  onPointerDown={(e) => handleResizePointerDown(e, seat.id, 'nw')}
+                  onPointerMove={handleResizeMove}
+                  onPointerUp={handleResizeUp}
+                  className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full cursor-nw-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+                />
+                <div 
+                  onPointerDown={(e) => handleResizePointerDown(e, seat.id, 'ne')}
+                  onPointerMove={handleResizeMove}
+                  onPointerUp={handleResizeUp}
+                  className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full cursor-ne-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+                />
+                <div 
+                  onPointerDown={(e) => handleResizePointerDown(e, seat.id, 'sw')}
+                  onPointerMove={handleResizeMove}
+                  onPointerUp={handleResizeUp}
+                  className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full cursor-sw-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+                />
+                <div 
+                  onPointerDown={(e) => handleResizePointerDown(e, seat.id, 'se')}
+                  onPointerMove={handleResizeMove}
+                  onPointerUp={handleResizeUp}
+                  className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full cursor-se-resize z-50 shadow-sm hover:scale-125 transition-transform" 
+                />
+              </>
+            )}
+          </div>
         );
       })}
     </div>

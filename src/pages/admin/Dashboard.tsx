@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Calendar, Users, DollarSign, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/data/dummyData";
 
 export default function Dashboard() {
