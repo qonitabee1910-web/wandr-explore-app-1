@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { History, LogOut, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { History, LogOut, Loader2, Shield } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +26,7 @@ const statusColor: Record<string, string> = {
 };
 
 const Account = () => {
-  const { user, logout } = useUserAuth();
+  const { user, logout, isAdmin } = useUserAuth();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -62,6 +63,21 @@ const Account = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {isAdmin && (
+          <Card className="mb-6 border-primary/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Shield className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-semibold text-sm">Admin Panel</p>
+                <p className="text-xs text-muted-foreground">Kelola booking, promo, dan layout kursi</p>
+              </div>
+              <Button asChild size="sm">
+                <Link to="/admin">Buka</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex items-center gap-2 mb-4">
           <History className="w-5 h-5 text-primary" />

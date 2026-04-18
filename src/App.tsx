@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UserAuthProvider } from "@/context/UserAuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute } from "@/components/AdminRoute";
+import AdminLayout from "@/components/admin/AdminLayout";
 import Index from "./pages/Index";
 import Shuttle from "./pages/Shuttle";
 import SeatLayoutEditor from "./pages/SeatLayoutEditor";
@@ -16,6 +18,12 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AuthCallback from "./pages/AuthCallback";
+import Dashboard from "./pages/admin/Dashboard";
+import AdminBookings from "./pages/admin/AdminBookings";
+import AdminPromos from "./pages/admin/AdminPromos";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminVehicles from "./pages/admin/AdminVehicles";
 
 const queryClient = new QueryClient();
 
@@ -32,19 +40,32 @@ const App = () => (
           }}
         >
           <Routes>
-            {/* Public routes */}
+            {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* Protected user routes */}
+            {/* Protected user */}
             <Route path="/shuttle" element={<ProtectedRoute><Shuttle /></ProtectedRoute>} />
-            <Route path="/shuttle/editor" element={<ProtectedRoute><SeatLayoutEditor /></ProtectedRoute>} />
             <Route path="/ride" element={<ProtectedRoute><Ride /></ProtectedRoute>} />
             <Route path="/promos" element={<ProtectedRoute><Promos /></ProtectedRoute>} />
             <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
             <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
+
+            {/* Admin */}
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<Dashboard />} />
+              <Route path="bookings" element={<AdminBookings />} />
+              <Route path="promos" element={<AdminPromos />} />
+              <Route path="vehicles" element={<AdminVehicles />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
+            <Route
+              path="/admin/seat-editor"
+              element={<AdminRoute><SeatLayoutEditor /></AdminRoute>}
+            />
 
             {/* 404 */}
             <Route path="*" element={<NotFound />} />

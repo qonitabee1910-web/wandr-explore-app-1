@@ -8,12 +8,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/data/dummyData";
+import { useUserAuth } from "@/context/UserAuthContext";
 
 const ROUTE_NAME = "Bandara Soekarno-Hatta → Jakarta Pusat";
 const SCHEDULE = "Hari ini, 14:00 WIB";
 
 const Shuttle = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useUserAuth();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const toggle = (id: string) => {
@@ -51,13 +53,15 @@ const Shuttle = () => {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="text-lg font-bold tracking-tight flex-1">Pilih Kursi Shuttle</h1>
-          <Link
-            to="/shuttle/editor"
-            aria-label="Edit layout kursi"
-            className="opacity-90 hover:opacity-100"
-          >
-            <Pencil className="w-4 h-4" />
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin/seat-editor"
+              aria-label="Edit layout kursi"
+              className="opacity-90 hover:opacity-100"
+            >
+              <Pencil className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
 
